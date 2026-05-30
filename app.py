@@ -466,12 +466,25 @@ with tab4:
         "MLP (çok katmanlı algılayıcı) ile **Huffman / LZW / BWT** kararı verir."
     )
 
-    # Modelin gerçek doğruluğunu oku
+    # Modelin gerçek doğruluğunu oku (sklearn/numpy versiyon uyumsuzluğuna karşı korumalı)
     import pickle as _pk
-    _mp = "core/nn_model.pkl"
+    _mp = os.path.join(os.path.dirname(__file__), "core", "nn_model.pkl")
+    _b = None
     if os.path.exists(_mp):
-        with open(_mp, "rb") as f:
-            _b = _pk.load(f)
+        try:
+            with open(_mp, "rb") as f:
+                _b = _pk.load(f)
+        except Exception:
+            # Versiyon uyumsuzlugu vs. — otomatik yeniden egit
+            st.info("📦 Model yükleniyor (ilk açılış 10-20 sn sürer)...")
+            try:
+                r = nn_train(verbose=False)
+                with open(_mp, "rb") as f:
+                    _b = _pk.load(f)
+                st.success(f"✓ Model yeniden eğitildi: %{r['test_accuracy']*100:.1f} doğruluk")
+            except Exception as e:
+                st.warning(f"Model eğitilemedi: {e}")
+    if _b:
         _info_cols = st.columns(4)
         _info_cols[0].metric("Hold-out doğruluk", f"%{_b.get('accuracy', 0)*100:.1f}",
                              help="Modelin hiç görmediği test setindeki doğruluk")
@@ -485,7 +498,7 @@ with tab4:
             st.caption(f"Sınıf dağılımı — Huffman: {_dist.get('huffman',0)}, "
                        f"LZW: {_dist.get('lzw',0)}, BWT: {_dist.get('bwt',0)}")
     else:
-        st.warning("Model henüz eğitilmemiş.")
+        st.warning("Model henüz eğitilmemiş. 'Eğit' butonuna basın.")
 
     col_a, col_b = st.columns(2)
     with col_a:

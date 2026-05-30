@@ -402,12 +402,30 @@ def train(corpus_path: str = None, verbose: bool = True) -> dict:
 # ─────────────────────────────────────────
 
 def predict(text: str) -> dict:
+    # Model yoksa veya bozuksa (sklearn/numpy versiyon farkı) otomatik egit
     if not os.path.exists(MODEL_FILE):
-        return {"algorithm": "huffman", "confidence": 0.5,
-                "error": "Model egitilmemis", "trained": False}
+        try:
+            train(verbose=False)
+        except Exception as e:
+            return {"algorithm": "huffman", "confidence": 0.5,
+                    "error": f"Model egitilemedi: {e}", "trained": False}
 
-    with open(MODEL_FILE, "rb") as f:
-        bundle = pickle.load(f)
+    try:
+        with open(MODEL_FILE, "rb") as f:
+            bundle = pickle.load(f)
+    except Exception:
+        # Versiyon uyumsuzlugu — sil, yeniden egit
+        try:
+            os.remove(MODEL_FILE)
+        except Exception:
+            pass
+        try:
+            train(verbose=False)
+            with open(MODEL_FILE, "rb") as f:
+                bundle = pickle.load(f)
+        except Exception as e:
+            return {"algorithm": "huffman", "confidence": 0.5,
+                    "error": f"Model yuklenemedi: {e}", "trained": False}
 
     model   = bundle["model"]
     scaler  = bundle["scaler"]
