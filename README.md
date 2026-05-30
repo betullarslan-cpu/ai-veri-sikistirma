@@ -3,9 +3,8 @@ title: AI Destekli Veri Sıkıştırma
 emoji: 🗜️
 colorFrom: indigo
 colorTo: green
-sdk: streamlit
-sdk_version: 1.30.0
-app_file: app.py
+sdk: docker
+app_port: 8501
 pinned: false
 ---
 
