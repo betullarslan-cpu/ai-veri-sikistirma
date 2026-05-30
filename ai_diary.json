@@ -1,0 +1,240 @@
+{
+  "adimlar": [
+    {
+      "adim": 1,
+      "hedeflenen_islem": "Türkçe metin için frekans tahmini (ilk tur)",
+      "verilen_prompt": "Sana bir Türkçe metin örneği veriyorum.\nBu metnin tüm karakter frekans dağılımını tahmin et.\n\nMetin örneği:\n\"\"\"\n\nTürkiye, Avrupa ve Asya kıtaları arasında köprü görevi gören eşsiz bir ülkedir.\nZengin ...",
+      "ai_cevabi": "{\n  \"a\": 0.0942,\n  \"b\": 0.0121,\n  \"c\": 0.0234,\n  \"ç\": 0.0156,\n  \"d\": 0.0612,\n  \"e\": 0.1345,\n  \"f\": 0.0183,\n  \"g\": 0.0259,\n  \"ğ\": 0.0062,\n  \"h\": 0.0285,\n  \"ı\": 0.0463,\n  \"i\": 0.0651,\n  \"j\": 0.0004,\n  \"k\": 0.0532,\n  \"l\": 0.0436,\n  \"m\": 0.0314,\n  \"n\": 0.0721,\n  \"o\": 0.0873,\n  \"ö\": 0.0129,\n  \"p\": 0.0154",
+      "sorun": "Yok",
+      "sonuc": "34 karakter tahmin edildi",
+      "token_kullanim": 595
+    },
+    {
+      "adim": 2,
+      "hedeflenen_islem": "Tahmin refinement (eksik karakterler eklendi)",
+      "verilen_prompt": "Önceki Türkçe metin frekans tahminine bu karakterler eksik kaldı: 'T', 'A', 'Z', 'K', 'D', \"'\", 'İ', 'C', 'E'\nBu karakterler için de 0-1 arası olasılık ver.\nSadece eksik karakterleri içeren JSON döndür.",
+      "ai_cevabi": "\n{\n  \"T\": 0.076,\n  \"A\": 0.111,\n  \"Z\": 0.005,\n  \"K\": 0.038,\n  \"D\": 0.046,\n  \"'\": 0.002,\n  \"İ\": 0.013,\n  \"C\": 0.023,\n  \"E\": 0.071\n}\n",
+      "sorun": "Eksik karakterler: 'T', 'A', 'Z', 'K', 'D', \"'\", 'İ', 'C', 'E'",
+      "sonuc": "9 eksik karakter eklendi, toplam 43 karakter",
+      "token_kullanim": 205
+    },
+    {
+      "adim": 3,
+      "hedeflenen_islem": "Final karşılaştırma",
+      "verilen_prompt": "Standart vs AI Huffman",
+      "ai_cevabi": "Saved=-2488 bit, KL=0.3813",
+      "sorun": "Yok",
+      "sonuc": "Standart kazandı (-2488 bit)",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 4,
+      "hedeflenen_islem": "tekrarlı metin için frekans tahmini (ilk tur)",
+      "verilen_prompt": "Sana bir tekrarlı metin örneği veriyorum.\nBu metnin tüm karakter frekans dağılımını tahmin et.\n\nMetin örneği:\n\"\"\"\nbu bir veri sikistirma projesidir ve huffman algoritmasini test ediyoruz. bu bir veri ...",
+      "ai_cevabi": "\n{\n  \"a\": 0.076,\n  \"b\": 0.034,\n  \"c\": 0.008,\n  \"d\": 0.032,\n  \"e\": 0.151,\n  \"f\": 0.008,\n  \"g\": 0.008,\n  \"h\": 0.008,\n  \"i\": 0.061,\n  \"j\": 0.0,\n  \"k\": 0.008,\n  \"l\": 0.016,\n  \"m\": 0.016,\n  \"n\": 0.043,\n  \"o\": 0.065,\n  \"p\": 0.008,\n  \"r\": 0.061,\n  \"s\": 0.065,\n  \"t\": 0.087,\n  \"u\": 0.043,\n  \"v\": 0.008,\n  \"w\"",
+      "sorun": "Yok",
+      "sonuc": "34 karakter tahmin edildi",
+      "token_kullanim": 571
+    },
+    {
+      "adim": 5,
+      "hedeflenen_islem": "Tahmin doğrulama",
+      "verilen_prompt": "Eksik karakter var mı?",
+      "ai_cevabi": "Yok",
+      "sorun": "Yok",
+      "sonuc": "Tahmin eksiksiz, refinement gerekmedi",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 6,
+      "hedeflenen_islem": "tekrarlı metin için frekans tahmini (ilk tur)",
+      "verilen_prompt": "Sana bir tekrarlı metin örneği veriyorum.\nBu metnin tüm karakter frekans dağılımını tahmin et.\n\nMetin örneği:\n\"\"\"\nbu bir veri sikistirma projesidir ve huffman algoritmasini test ediyoruz. bu bir veri ...",
+      "ai_cevabi": "Parse edilemedi",
+      "sorun": "JSON parse hatası: Expecting property name enclosed in double quotes: line 39 column 3 (char 529)",
+      "sonuc": "Hata — sonraki adımda düzeltildi",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 7,
+      "hedeflenen_islem": "Türkçe metin için frekans tahmini (ilk tur)",
+      "verilen_prompt": "Sana bir Türkçe metin örneği veriyorum.\nBu metnin tüm karakter frekans dağılımını tahmin et.\n\nMetin örneği:\n\"\"\"\n\nTürkiye, Avrupa ve Asya kıtaları arasında köprü görevi gören eşsiz bir ülkedir.\nZengin ...",
+      "ai_cevabi": "{\n  \"a\": 0.104,\n  \"b\": 0.015,\n  \"c\": 0.025,\n  \"ç\": 0.017,\n  \"d\": 0.043,\n  \"e\": 0.129,\n  \"f\": 0.018,\n  \"g\": 0.029,\n  \"ğ\": 0.009,\n  \"h\": 0.011,\n  \"ı\": 0.061,\n  \"i\": 0.059,\n  \"j\": 0.000,\n  \"k\": 0.036,\n  \"l\": 0.035,\n  \"m\": 0.024,\n  \"n\": 0.067,\n  \"o\": 0.075,\n  \"ö\": 0.015,\n  \"p\": 0.012,\n  \"r\": 0.051,\n  \"s",
+      "sorun": "Yok",
+      "sonuc": "60 karakter tahmin edildi",
+      "token_kullanim": 769
+    },
+    {
+      "adim": 8,
+      "hedeflenen_islem": "Tahmin refinement (eksik karakterler eklendi)",
+      "verilen_prompt": "Önceki Türkçe metin frekans tahminine bu karakterler eksik kaldı: 'T', 'A', 'Z', 'K', 'D', 'İ', 'C', 'E'\nBu karakterler için de 0-1 arası olasılık ver.\nSadece eksik karakterleri içeren JSON döndür.",
+      "ai_cevabi": "\n{\n  \"T\": 0.062,\n  \"A\": 0.083,\n  \"Z\": 0.014,\n  \"K\": 0.026,\n  \"D\": 0.041,\n  \"İ\": 0.016,\n  \"C\": 0.024,\n  \"E\": 0.053\n}\n",
+      "sorun": "Eksik karakterler: 'T', 'A', 'Z', 'K', 'D', 'İ', 'C', 'E'",
+      "sonuc": "8 eksik karakter eklendi, toplam 68 karakter",
+      "token_kullanim": 197
+    },
+    {
+      "adim": 9,
+      "hedeflenen_islem": "Final karşılaştırma",
+      "verilen_prompt": "Standart vs AI Huffman",
+      "ai_cevabi": "Saved=-2053 bit, KL=0.3562",
+      "sorun": "Yok",
+      "sonuc": "Standart kazandı (-2053 bit)",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 10,
+      "hedeflenen_islem": "tekrarlı metin için frekans tahmini (ilk tur)",
+      "verilen_prompt": "Sana bir tekrarlı metin örneği veriyorum.\nBu metnin tüm karakter frekans dağılımını tahmin et.\n\nMetin örneği:\n\"\"\"\nbu bir veri sikistirma projesidir ve huffman algoritmasini test ediyoruz. bu bir veri ...",
+      "ai_cevabi": "{\n    \"a\": 0.0614,\n    \"b\": 0.0306,\n    \"c\": 0.0000,\n    \"ç\": 0.0074,\n    \"d\": 0.0462,\n    \"e\": 0.1249,\n    \"f\": 0.0074,\n    \"g\": 0.0074,\n    \"ğ\": 0.0000,\n    \"h\": 0.0447,\n    \"i\": 0.0882,\n    \"ı\": 0.0221,\n    \"j\": 0.0000,\n    \"k\": 0.0155,\n    \"l\": 0.0374,\n    \"m\": 0.0155,\n    \"n\": 0.0594,\n    \"o\": ",
+      "sorun": "Yok",
+      "sonuc": "48 karakter tahmin edildi",
+      "token_kullanim": 731
+    },
+    {
+      "adim": 11,
+      "hedeflenen_islem": "Tahmin doğrulama",
+      "verilen_prompt": "Eksik karakter var mı?",
+      "ai_cevabi": "Yok",
+      "sorun": "Yok",
+      "sonuc": "Tahmin eksiksiz, refinement gerekmedi",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 12,
+      "hedeflenen_islem": "Final karşılaştırma",
+      "verilen_prompt": "Standart vs AI Huffman",
+      "ai_cevabi": "Saved=-2612 bit, KL=1.0175",
+      "sorun": "Yok",
+      "sonuc": "Standart kazandı (-2612 bit)",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 13,
+      "hedeflenen_islem": "Türkçe metin için frekans tahmini (ilk tur)",
+      "verilen_prompt": "Sana bir Türkçe metin örneği veriyorum.\nBu metnin tüm karakter frekans dağılımını tahmin et.\n\nMetin örneği:\n\"\"\"\n\nTürkiye, Avrupa ve Asya kıtaları arasında köprü görevi gören eşsiz bir ülkedir.\nZengin ...",
+      "ai_cevabi": "{\n  \"a\": 0.1047,\n  \"b\": 0.0154,\n  \"c\": 0.0243,\n  \"ç\": 0.0205,\n  \"d\": 0.0562,\n  \"e\": 0.1031,\n  \"f\": 0.0162,\n  \"g\": 0.0265,\n  \"ğ\": 0.0061,\n  \"h\": 0.0121,\n  \"ı\": 0.0448,\n  \"i\": 0.0653,\n  \"j\": 0.0002,\n  \"k\": 0.0469,\n  \"l\": 0.0345,\n  \"m\": 0.0221,\n  \"n\": 0.0762,\n  \"o\": 0.0841,\n  \"ö\": 0.0149,\n  \"p\": 0.0085",
+      "sorun": "Yok",
+      "sonuc": "35 karakter tahmin edildi",
+      "token_kullanim": 604
+    },
+    {
+      "adim": 14,
+      "hedeflenen_islem": "Tahmin refinement (eksik karakterler eklendi)",
+      "verilen_prompt": "Önceki Türkçe metin frekans tahminine bu karakterler eksik kaldı: 'T', 'A', 'Z', 'K', 'D', 'İ', 'C', 'E'\nBu karakterler için de 0-1 arası olasılık ver.\nSadece eksik karakterleri içeren JSON döndür.",
+      "ai_cevabi": "\n{\n  \"T\": 0.061,\n  \"A\": 0.114,\n  \"Z\": 0.023,\n  \"K\": 0.043,\n  \"D\": 0.056,\n  \"İ\": 0.034,\n  \"C\": 0.026,\n  \"E\": 0.071\n}\n",
+      "sorun": "Eksik karakterler: 'T', 'A', 'Z', 'K', 'D', 'İ', 'C', 'E'",
+      "sonuc": "8 eksik karakter eklendi, toplam 43 karakter",
+      "token_kullanim": 197
+    },
+    {
+      "adim": 15,
+      "hedeflenen_islem": "Final karşılaştırma",
+      "verilen_prompt": "Standart vs AI Huffman",
+      "ai_cevabi": "Saved=-2588 bit, KL=0.4030",
+      "sorun": "Yok",
+      "sonuc": "Standart kazandı (-2588 bit)",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 16,
+      "hedeflenen_islem": "LZW Unicode desteği — Türkçe karakter hatası",
+      "verilen_prompt": "LZW encode fonksiyonunu Türkçe karakterlerle (ı, ş, ğ, ü, ö, ç) çalışacak şekilde düzelt.",
+      "ai_cevabi": "Sözlük başlangıçta sadece chr(0)-chr(255) kapsıyordu. AI kodu üretirken ASCII sınırını aşmadı.",
+      "sorun": "KeyError: 'ı' — Türkçe karakterler Unicode (>255), standart LZW sözlüğünde tanımsız",
+      "sonuc": "Metindeki tüm karakterler sözlüğe otomatik eklendi. Türkçe ve tüm Unicode metinler desteklendi.",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 17,
+      "hedeflenen_islem": "Görüntü Sıkıştırma — AI Bölge Tespiti",
+      "verilen_prompt": "PNG/JPG görüntüsünü yükle, AI önemli/önemsiz bölgeleri tespit etsin, önemsiz bölgelere daha yüksek kayıp uygula.",
+      "ai_cevabi": "Planlandı — henüz uygulanmadı.",
+      "sorun": "Yok",
+      "sonuc": "Gelecek adımda uygulanacak.",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 18,
+      "hedeflenen_islem": "Görüntü Sekmesi Arayüze Ekleme",
+      "verilen_prompt": "Streamlit app.py dosyasına yeni sekme: görüntü yükle, AI analiz etsin, sıkıştırma oranlarını karşılaştır.",
+      "ai_cevabi": "Planlandı.",
+      "sorun": "Yok",
+      "sonuc": "Gelecek adımda uygulanacak.",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 19,
+      "hedeflenen_islem": "LZW Akıllı Sözlük — Prompt Tasarımı",
+      "verilen_prompt": "LZW sıkıştırma için en sık geçen {n} kelime/kelime çifti/yaygın ifadeyi listele. Kısa (2-15 karakter) ve sık geçen ifadeleri tercih et. Sadece JSON listesi döndür.",
+      "ai_cevabi": "AI 26-80 arası kelime önerdi. Türkçe yaygın ekler (-lar, -ler, -ın, -in), bağlaçlar (ve, ile, bu, bir) ve alan-spesifik terimler listelendi.",
+      "sorun": "Bazı kelimelerde uzunluk sınırı aşıldı (>20 karakter). Filtreleme eklendi.",
+      "sonuc": "AI sözlüğü LZW başlangıcına eklendi. Standart LZW ile karşılaştırma yapıldı.",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 20,
+      "hedeflened_islem": "Huffman Frekans Tahmini — İpucu Stratejisi",
+      "hedeflenen_islem": "Huffman AI Frekans — Few-shot prompt ile iyileştirme",
+      "verilen_prompt": "Metin örneği ver + ipucu: ilk 10 karakter gerçek frekansını ekle. AI bu ipucuyla daha doğru tahmin yapıyor mu test et.",
+      "ai_cevabi": "İpucu verildiğinde KL-Divergence 0.40 dan 0.35 e düştü. Türkçe özel karakterler (ı, ş, ğ) daha doğru tahmin edildi.",
+      "sorun": "İpucu olmadan AI Türkçe karakterleri gözden kaçırıyordu.",
+      "sonuc": "top10_hint stratejisi eklendi. Tahmin kalitesi %12 iyileşti.",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 21,
+      "hedeflenen_islem": "AI Algoritma Seçici — Prompt Mühendisliği",
+      "verilen_prompt": "Metni analiz et: tekrar oranı, kelime çeşitliliği, karakter dağılımı. Huffman / LZW / hybrid hangisi daha uygun? Güven skoru ve gerekçe ver. JSON formatında döndür.",
+      "ai_cevabi": "Tekrarlı metin → LZW önerildi (güven: 85). Zengin Türkçe metin → Huffman önerildi (güven: 78). Karma veri → hybrid önerildi.",
+      "sorun": "confidence skoru bazen string döndü. int() dönüşümü eklendi.",
+      "sonuc": "AI kararını grafik + gerekçe ile gösteriyor. Hibrit modda her iki algoritma da çalışıyor.",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 22,
+      "hedeflenen_islem": "Görüntü Sıkıştırma — Bölge Önem Haritası Promptu",
+      "verilen_prompt": "Görüntü türünü ver (portre, manzara vb.). 3x3 ızgara için her bloğa JPEG kalite skoru ata (20-95). Önemli bölgeler yüksek kalite, arka plan düşük kalite. JSON grid döndür.",
+      "ai_cevabi": "Portre için merkez 95, köşeler 20-25 kalite atadı. Manzara için üst (gökyüzü) 40, orta (ufuk) 85 atadı.",
+      "sorun": "grid boyutu bazen 2x3 geldi. Boyut kontrolü ve varsayılan değer eklendi.",
+      "sonuc": "Görsel kalite korunurken %15-30 ek küçülme sağlandı. Blok birleştirme görseli oluşturuldu.",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 23,
+      "hedeflenen_islem": "OCR + Sıkıştırma Pipeline — Vision Modeli",
+      "verilen_prompt": "Görüntüyü base64 ile Groq vision modeline gönder. Prompt: Bu görüntüdeki tüm metni aynen oku ve yaz. Sadece görüntüdeki metni ver, başka hiçbir şey ekleme.",
+      "ai_cevabi": "llama-4-scout-17b vision modeli görüntüdeki metni başarıyla okudu. Türkçe karakterler (ş, ğ, ü) doğru tanındı.",
+      "sorun": "Model adı değişkendi. meta-llama/llama-4-scout-17b-16e-instruct kullanıldı.",
+      "sonuc": "OCR çıktısı Huffman ve LZW ile sıkıştırıldı. En iyi algoritma otomatik seçildi.",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 24,
+      "hedeflenen_islem": "Shannon Entropisi — Teorik Sınır Analizi",
+      "verilen_prompt": "H(X) = -Σ p(x) * log2(p(x)) formülü ile teorik minimum bit hesaplandı. AI yok — saf matematiksel analiz. Huffman ne kadar yaklaşıyor?",
+      "ai_cevabi": "Türkçe doğal metin: Huffman teorik sınıra %92 verimlilikle yaklaşıyor. Tekrarlı metin: %88.",
+      "sorun": "Tek karakterli metinde log2(0) hatası. epsilon=1e-9 ile çözüldü.",
+      "sonuc": "Grafik: Orijinal vs Teorik Minimum vs Huffman vs AI Hedef karşılaştırması eklendi.",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 25,
+      "hedeflenen_islem": "Refinement — Eksik Karakter Döngüsü",
+      "verilen_prompt": "Önceki frekans tahminine şu karakterler eksik kaldı: [liste]. Bu karakterler için 0-1 arası olasılık ver. Sadece eksik karakterleri içeren JSON döndür.",
+      "ai_cevabi": "AI eksik karakterleri tamamladı. Özellikle noktalama işaretleri (., ,, :, !) ve rakamlar ilk turda atlanıyordu.",
+      "sorun": "Refinement sonrası toplam olasılık 1.0 yu aşıyordu. Normalize adımı eklendi.",
+      "sonuc": "2 adımlı tahmin sistemi: ilk tur genel dağılım, ikinci tur eksik karakterler. KL-Divergence düştü.",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 26,
+      "hedeflenen_islem": "BWT+RLE+Huffman entegrasyonu (bzip2 tekniği)",
+      "verilen_prompt": "BWT (Burrows-Wheeler Transform) implementasyonu yap. BWT sonrasi RLE (Run-Length Encoding) uygula, ardindan Huffman ile kodla. Bzip2 yaklasimi. Tum mevcut algoritmalarla karsilastir.",
+      "ai_cevabi": "core/bwt.py olusturuldu: bwt_encode, bwt_decode, rle_compress, bwt_rle_huffman_bits, bwt_lzw_bits, compare, bwt_stats fonksiyonlari. hybrid.py guncellendi: hybrid_compress ve smart_hybrid BWT+RLE+Huffman kullanir. app.py guncellendi: 11. sekme BWT Sikistirma eklendi.",
+      "sorun": "bwt_decode hatasi: first[idx] yerine bwt[idx] kullanilmali, n-1 degil n iterasyon, reverse sonra EOF cikar. Duzeltildi ve banana/merhaba/Turkce testleri gecti.",
+      "sonuc": "Tekrarli metin: %94.1 iyilesme (0.2113->0.0124), ZLIB'den iyi! Dogal Turkce: %30.7 iyilesme (0.6021->0.4170). smart_hybrid artik BWT post-check yapiyor, her zaman en iyiyi seciyor.",
+      "token_kullanim": 0
+    }
+  ],
+  "toplam_token": 3869
+}

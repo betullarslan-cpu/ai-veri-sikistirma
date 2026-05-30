@@ -1,0 +1,13 @@
+Veri sıkıştırma, bilgisayar biliminin en temel konularından biridir. Bir dosyanın boyutunu küçültmek, hem depolama alanından tasarruf sağlar hem de iletim hızını artırır.
+
+Huffman kodlaması, 1952 yılında David Huffman tarafından geliştirilmiştir. Bu algoritma, sık kullanılan karakterlere kısa, az kullanılan karakterlere uzun bit dizileri atayarak sıkıştırma yapar. Örneğin Türkçe metinlerde boşluk karakteri en sık kullanılan karakterdir ve ona en kısa kod atanır.
+
+LZW algoritması ise Lempel, Ziv ve Welch tarafından 1984 yılında geliştirilmiştir. GIF görüntü formatı ve ZIP dosya sıkıştırmasında kullanılır. Sözlük tabanlı çalışır; metni okurken tekrar eden dizileri sözlüğe ekler ve sonraki karşılaşmalarda kısa kodlarla ifade eder.
+
+Yapay zeka ile sıkıştırma algoritmalarını birleştirmek son yıllarda büyük ilgi görmektedir. Büyük dil modelleri, bir metnin hangi karakterleri veya kalıpları içereceğini tahmin edebilir. Bu tahmin yeteneği, sıkıştırma öncesinde daha iyi olasılık modelleri oluşturmaya olanak tanır.
+
+Kayıplı sıkıştırma yöntemleri görüntü ve ses dosyalarında yaygın kullanılır. JPEG formatı DCT (Ayrık Kosinüs Dönüşümü) kullanarak görüntünün insan gözünün fark edemeyeceği bileşenlerini atar. MP3 formatı ise insan kulağının duyamayacağı frekansları kaldırır.
+
+Sıkıştırma oranı, sıkıştırılmış dosya boyutunun orijinal dosya boyutuna bölünmesiyle hesaplanır. Oran ne kadar düşükse sıkıştırma o kadar başarılıdır. Kayıpsız sıkıştırmada orijinal veri tamamen geri kazanılabilirken, kayıplı sıkıştırmada bir miktar bilgi kaybı kabul edilir.
+
+Bu projede Huffman ve LZW algoritmalarını yapay zeka ile geliştirerek daha yüksek sıkıştırma oranları elde etmeyi hedefliyoruz. Groq API üzerinden çalışan Llama modeli, karakter frekanslarını tahmin ederek ve akıllı sözlükler oluşturarak algoritmaların performansını artırmaktadır.
