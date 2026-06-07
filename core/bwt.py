@@ -181,6 +181,79 @@ def bwt_huffman_bits(text: str) -> int:
     return compressed + overhead
 
 
+def bwt_rle_huffman_encode(text: str) -> dict:
+    """
+    BWT + RLE + Huffman ile GERCEK encode edilmis cikti dondurur.
+
+    Returns:
+        {
+            "bit_string": "01001011...",  # ham bit dizisi
+            "byte_data":  bytes(...),     # 8-bit paketli binary
+            "bwt":        "permute...",
+            "orig_idx":   int,
+            "runs":       [(ch, count), ...],
+            "codes":      {ch: "010"},
+            "total_bits": int,
+        }
+    """
+    bwt, orig_idx = bwt_encode(text)
+    if not bwt:
+        return {"bit_string": "", "byte_data": b"", "total_bits": 0,
+                "bwt": "", "orig_idx": 0, "runs": [], "codes": {}}
+
+    runs = rle_compress(bwt)
+    char_freq = Counter(ch for ch, _ in runs)
+    total_runs = len(runs)
+    char_probs = {ch: c / total_runs for ch, c in char_freq.items()}
+    codes = _build_huffman(char_probs)
+
+    # Gercek bit dizisi olustur
+    bit_parts = []
+    for ch, count in runs:
+        # 1) Char Huffman kodu
+        bit_parts.append(codes.get(ch, "0" * 16))
+        # 2) Elias-gamma kodu (count >= 1)
+        if count == 1:
+            bit_parts.append("1")
+        else:
+            n = int(math.log2(count))
+            bit_parts.append("0" * n + "1" + bin(count)[2:][1:])
+
+    bit_string = "".join(bit_parts)
+
+    # 8-bit paketle (binary cikti)
+    padded = bit_string + "0" * ((8 - len(bit_string) % 8) % 8)
+    byte_data = bytes(int(padded[i:i+8], 2) for i in range(0, len(padded), 8))
+
+    return {
+        "bit_string": bit_string,
+        "byte_data":  byte_data,
+        "bwt":        bwt,
+        "orig_idx":   orig_idx,
+        "runs":       runs,
+        "codes":      codes,
+        "total_bits": len(bit_string),
+    }
+
+
+def huffman_encode_bytes(text: str) -> dict:
+    """Standart Huffman ile gercek encode edilmis cikti."""
+    total = len(text)
+    if total == 0:
+        return {"bit_string": "", "byte_data": b"", "total_bits": 0, "codes": {}}
+    freq = {ch: c / total for ch, c in Counter(text).items()}
+    codes = _build_huffman(freq)
+    bit_string = "".join(codes.get(ch, "0" * 16) for ch in text)
+    padded = bit_string + "0" * ((8 - len(bit_string) % 8) % 8)
+    byte_data = bytes(int(padded[i:i+8], 2) for i in range(0, len(padded), 8))
+    return {
+        "bit_string": bit_string,
+        "byte_data":  byte_data,
+        "codes":      codes,
+        "total_bits": len(bit_string),
+    }
+
+
 def bwt_rle_huffman_bits(text: str) -> int:
     """
     BWT + RLE + Huffman — bzip2 yaklaşımı.

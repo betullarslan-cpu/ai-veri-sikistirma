@@ -82,20 +82,16 @@ if len(text) < 10:
     st.warning("En az 10 karakter girin.")
     st.stop()
 
-# ─── Sekmeler — Hızlı Özet en başta, geri kalanlar kısa isimle ──────
-tab0, tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10, tab11 = st.tabs([
+# ─── Sekmeler — sadece gerekli olanlar ──────
+tab0, tab1, tab2, tab4, tab6, tab9, tab11, tab10 = st.tabs([
     "🚀 Hızlı Özet",
     "📊 Huffman",
     "📖 LZW",
-    "🧠 AI Seçici",
     "🔬 Sinir Ağı",
-    "📐 Aritmetik",
     "⚡ Hibrit",
-    "🖼️ Görüntü",
-    "🔍 OCR",
     "📈 Shannon",
-    "🤖 Günlük",
     "🔄 BWT",
+    "🤖 Günlük",
 ])
 
 
@@ -187,6 +183,36 @@ with tab0:
                 {"Algoritma": "BWT",     "Olasılık": f"%{probs.get('bwt',0)*100:.1f}"},
             ]
             st.dataframe(prob_rows, use_container_width=True, hide_index=True, height=160)
+
+            # === SIKIŞTIRILMIŞ ÇIKTI ===
+            from core.bwt import bwt_rle_huffman_encode, huffman_encode_bytes
+            _bwt_out  = bwt_rle_huffman_encode(text)
+            _huff_out = huffman_encode_bytes(text)
+
+            st.markdown("---")
+            st.markdown("**💾 Sıkıştırılmış Çıktı (BWT+RLE+Huffman)**")
+            st.metric("Binary boyut", f"{len(_bwt_out['byte_data']):,} byte",
+                      delta=f"{len(text):,} byte → {len(_bwt_out['byte_data']):,} byte")
+            # Bit dizisi önizleme
+            bits_preview = _bwt_out['bit_string'][:160]
+            st.code(bits_preview + ("..." if len(_bwt_out['bit_string']) > 160 else ""),
+                    language=None)
+            # Indirme butonları
+            d1, d2 = st.columns(2)
+            d1.download_button(
+                "⬇ BWT sıkıştırılmış (.bin)",
+                data=_bwt_out['byte_data'],
+                file_name="sikistirilmis_bwt.bin",
+                mime="application/octet-stream",
+                key="dl_bwt",
+            )
+            d2.download_button(
+                "⬇ Huffman sıkıştırılmış (.bin)",
+                data=_huff_out['byte_data'],
+                file_name="sikistirilmis_huffman.bin",
+                mime="application/octet-stream",
+                key="dl_huff",
+            )
             st.caption(
                 f"Entropi: **{_ent:.3f}** bit/kar  •  "
                 f"Karakter: **{len(text):,}**  •  "
@@ -377,84 +403,6 @@ with tab2:
                 except Exception as e:
                     st.error(f"Hata: {e}")
 
-
-# ═══════════════════════════════════════════════════
-# SEKME 3: AI ALGORİTMA SEÇİCİ
-# ═══════════════════════════════════════════════════
-with tab3:
-    st.subheader("🧠 AI Otomatik Algoritma Seçici")
-    st.markdown(
-        "**AI, metni analiz ederek Huffman mı yoksa LZW mi daha uygun olduğuna karar verir.** "
-        "Gerekçesini açıklar, ardından seçtiği algoritmayı çalıştırır."
-    )
-
-    if st.button("▶ AI Analiz Etsin", key="selector"):
-        if not api_key:
-            st.error("Sol menüden Groq API key gir.")
-        else:
-            with st.spinner("AI metni analiz ediyor..."):
-                try:
-                    result = analyze_and_select(text)
-
-                    algo = result.get("algorithm", "huffman")
-                    conf = result.get("confidence", 0)
-                    reason = result.get("reasoning", "")
-                    chars = result.get("characteristics", {})
-
-                    # AI kararı
-                    algo_label = {"huffman": "Huffman", "lzw": "LZW", "hybrid": "Hibrit (Her ikisi)"}.get(algo, algo)
-                    color = "🟢" if conf >= 70 else "🟡"
-                    st.markdown(f"## {color} AI Kararı: **{algo_label}**")
-                    st.markdown(f"**Güven:** {conf}/100")
-                    st.info(f"💬 **Gerekçe:** {reason}")
-
-                    # Özellikler
-                    c1, c2, c3 = st.columns(3)
-                    c1.metric("Tekrar Oranı", chars.get("repetition", "-"))
-                    c2.metric("Kelime Çeşitliliği", chars.get("vocabulary", "-"))
-                    c3.metric("En İyi Kullanım", chars.get("best_for", "-"))
-
-                    # Algoritmayı çalıştır
-                    with st.spinner(f"{algo_label} çalıştırılıyor..."):
-                        run_results = run_selected(text, algo)
-
-                    orig = len(text) * 8
-                    st.markdown("### Sonuçlar")
-                    cols = st.columns(len(run_results) + 1)
-                    cols[0].metric("Orijinal", f"{orig:,} bit")
-                    for i, (name, r) in enumerate(run_results.items()):
-                        bits = r.get("bits") or r.get("compressed_bits", 0)
-                        ratio = r.get("ratio", bits/orig)
-                        cols[i+1].metric(
-                            name.upper(),
-                            f"{bits:,} bit",
-                            delta=f"%{(1-ratio)*100:.1f} küçüldü"
-                        )
-
-                    # Grafik
-                    names = ["Orijinal"] + [n.upper() for n in run_results]
-                    vals  = [orig] + [
-                        r.get("bits") or r.get("compressed_bits", 0)
-                        for r in run_results.values()
-                    ]
-                    fig = go.Figure(go.Bar(
-                        x=names, y=vals,
-                        marker_color=["#636EFA", "#00CC96", "#EF553B"][:len(vals)],
-                        text=[f"{v:,} bit" for v in vals],
-                        textposition="outside",
-                    ))
-                    fig.update_layout(title=f"AI Seçimi: {algo_label}",
-                                      yaxis_title="Bit", height=380, showlegend=False)
-                    st.plotly_chart(fig, use_container_width=True)
-
-                    st.metric("Token kullanımı", result.get("tokens", 0))
-
-                except Exception as e:
-                    st.error(f"Hata: {type(e).__name__}: {e}")
-                    with st.expander("Detay"):
-                        st.exception(e)
-
-
 # ═══════════════════════════════════════════════════
 # SEKME 4: SİNİR AĞI SEÇİCİ
 # ═══════════════════════════════════════════════════
@@ -573,64 +521,6 @@ with tab4:
         - Hold-out test seti (modelin hiç görmediği)
         - 1900+ örnek (sentetik + 4 farklı corpus)
         """)
-
-
-# ═══════════════════════════════════════════════════
-# SEKME 5: ARİTMETİK KODLAMA + AI
-# ═══════════════════════════════════════════════════
-with tab5:
-    st.subheader("📐 Aritmetik Kodlama + AI Olasılık Modeli")
-    st.markdown(
-        "**Aritmetik kodlama**, Huffman'ın aksine sembol başına kesirli bit kullanır — "
-        "Shannon sınırına çok daha yakın sıkıştırma yapar. "
-        "AI olasılık tahmini ile tablo overhead'i ortadan kalkar."
-    )
-
-    if st.button("▶ Aritmetik Analiz Başlat", key="arith"):
-        if not api_key:
-            st.error("Sol menüden Groq API key gir.")
-        else:
-            with st.spinner("AI olasılık modeli oluşturuluyor..."):
-                try:
-                    result = arith_compare(text, text_type)
-                    orig = result["original_bits"]
-                    std  = result["standard"]
-                    ai   = result["ai_arithmetic"]
-                    theo = result["theoretical_min"]
-
-                    c1, c2, c3, c4 = st.columns(4)
-                    c1.metric("Orijinal", f"{orig:,} bit")
-                    c2.metric("Standart Aritmetik", f"{std['total']:,} bit",
-                              delta=f"oran: {std['ratio']:.4f}")
-                    c3.metric("AI Aritmetik", f"{ai['total']:,} bit",
-                              delta=f"oran: {ai['ratio']:.4f}")
-                    c4.metric("Shannon Sınırı", f"{theo:,} bit",
-                              delta=f"oran: {theo/orig:.4f}")
-
-                    saved = result["saved_vs_standard"]
-                    if saved > 0:
-                        st.success(f"✅ AI aritmetik kodlama {saved:,} bit tasarruf sağladı!")
-                    else:
-                        st.info(f"ℹ️ Standart {-saved:,} bit daha iyi. AI olasılık tahmini iyileştirilebilir.")
-
-                    fig = go.Figure(go.Bar(
-                        x=["Orijinal", "Standart\nAritmetik", "AI\nAritmetik", "Shannon\nSınırı"],
-                        y=[orig, std["total"], ai["total"], theo],
-                        marker_color=["#636EFA", "#EF553B", "#AB63FA", "#00CC96"],
-                        text=[f"{v:,}" for v in [orig, std["total"], ai["total"], theo]],
-                        textposition="outside",
-                    ))
-                    fig.add_hline(y=theo, line_dash="dash", line_color="#00CC96",
-                                  annotation_text="Teorik Sınır")
-                    fig.update_layout(title="Aritmetik Kodlama vs Shannon Sınırı",
-                                      yaxis_title="Bit", height=420, showlegend=False)
-                    st.plotly_chart(fig, use_container_width=True)
-                    st.caption(f"Token kullanımı: {result['tokens']}")
-
-                except Exception as e:
-                    st.error(f"Hata: {type(e).__name__}: {e}")
-                    with st.expander("Detay"): st.exception(e)
-
 
 # ═══════════════════════════════════════════════════
 # SEKME 6: HİBRİT SIKIŞTURMA
@@ -801,190 +691,6 @@ with tab6:
                 st.error(f"❌ Dosya okunamadı: {e}")
                 st.info("İpucu: .pdf yerine .txt yükleyin. "
                         "PDF içeriğini metin editörüne yapıştırıp 'kaydet (UTF-8)' deyin.")
-
-
-# ═══════════════════════════════════════════════════
-# SEKME 7: GÖRÜNTÜ SIKIŞTURMA
-# ═══════════════════════════════════════════════════
-with tab7:
-    st.subheader("🖼️ AI Tabanlı Görüntü Sıkıştırma")
-    st.markdown(
-        "**AI, görüntünün hangi bölgelerinin önemli olduğuna karar verir.** "
-        "Merkez/odak bölgesi yüksek kalitede, arka plan/köşeler düşük kalitede sıkıştırılır. "
-        "Böylece görsel kalite korunurken dosya boyutu küçülür."
-    )
-
-    img_file = st.file_uploader("Görüntü yükle (PNG / JPG)", type=["png", "jpg", "jpeg"])
-    img_desc = st.text_input("Görüntüyü kısaca tanımla",
-                             placeholder="örn: portre fotoğrafı, şehir manzarası, teknik diyagram")
-    std_q = st.slider("Standart JPEG kalitesi (karşılaştırma için)", 10, 90, 50)
-
-    if img_file and img_desc:
-        img = Image.open(img_file)
-
-        col_orig, col_info = st.columns([2, 1])
-        with col_orig:
-            st.image(img, caption="Orijinal", use_column_width=True)
-        with col_info:
-            st.metric("Boyut", f"{img.size[0]}×{img.size[1]} px")
-            st.metric("Mod", img.mode)
-
-        if st.button("▶ AI Analiz Et ve Sıkıştır", key="img_compress"):
-            if not api_key:
-                st.error("Sol menüden Groq API key gir.")
-            else:
-                with st.spinner("AI bölge haritası oluşturuyor..."):
-                    try:
-                        result = image_compare(img, img_desc, std_quality=std_q)
-                        imp = result["importance_map"]
-
-                        # AI kararı
-                        st.info(f"💬 **AI Gerekçesi:** {imp.get('reasoning', '')}")
-                        st.caption(f"Önemli bölgeler: {imp.get('important_regions', '')}")
-
-                        # Kalite ızgarası
-                        grid = imp.get("grid", [[50]*3]*3)
-                        st.markdown("**Kalite Haritası (3×3 ızgara):**")
-                        grid_cols = st.columns(3)
-                        labels = ["Sol", "Orta", "Sağ"]
-                        row_labels = ["Üst", "Orta", "Alt"]
-                        for r in range(3):
-                            for c in range(3):
-                                q = grid[r][c] if r < len(grid) and c < len(grid[r]) else 50
-                                color = "🟢" if q >= 80 else "🟡" if q >= 50 else "🔴"
-                                grid_cols[c].metric(
-                                    f"{row_labels[r]}-{labels[c]}",
-                                    f"{color} Q{q}"
-                                )
-
-                        # Metrikler
-                        st.markdown("### Boyut Karşılaştırması")
-                        m1, m2, m3 = st.columns(3)
-                        m1.metric("Orijinal PNG", f"{result['original_bytes']:,} byte")
-                        m2.metric(f"Standart JPEG (Q{std_q})",
-                                  f"{result['standard_bytes']:,} byte",
-                                  delta=f"%{(1-result['standard_ratio'])*100:.1f} küçüldü")
-                        m3.metric("AI Bölgeli JPEG",
-                                  f"{result['ai_bytes']:,} byte",
-                                  delta=f"%{(1-result['ai_ratio'])*100:.1f} küçüldü")
-
-                        saved = result["saved_bytes"]
-                        if saved > 0:
-                            st.success(f"✅ AI yaklaşımı standart JPEG'den {saved:,} byte daha az!")
-                        else:
-                            st.info(f"ℹ️ Standart JPEG {-saved:,} byte daha küçük. "
-                                    "AI bölge birleştirme maliyeti var.")
-
-                        # Grafik
-                        fig = go.Figure(go.Bar(
-                            x=["Orijinal PNG", f"Standart JPEG\n(Q{std_q})", "AI Bölgeli JPEG"],
-                            y=[result["original_bytes"], result["standard_bytes"], result["ai_bytes"]],
-                            marker_color=["#636EFA", "#EF553B", "#00CC96"],
-                            text=[f"{v:,} B" for v in [
-                                result["original_bytes"], result["standard_bytes"], result["ai_bytes"]]],
-                            textposition="outside",
-                        ))
-                        fig.update_layout(title="Görüntü Boyutu Karşılaştırması",
-                                          yaxis_title="Byte", height=380, showlegend=False)
-                        st.plotly_chart(fig, use_container_width=True)
-
-                        # Sonuç görüntü
-                        c1, c2 = st.columns(2)
-                        c1.image(result["std_image"],
-                                 caption=f"Standart JPEG (Q{std_q})", use_column_width=True)
-                        c2.image(result["ai_image"],
-                                 caption="AI Bölgeli JPEG", use_column_width=True)
-
-                        st.metric("Token kullanımı", imp.get("tokens", 0))
-
-                    except Exception as e:
-                        st.error(f"Hata: {type(e).__name__}: {e}")
-                        with st.expander("Detay"):
-                            st.exception(e)
-    else:
-        st.info("Görüntü yükle ve tanımla, ardından AI analiz etsin.")
-
-
-# ═══════════════════════════════════════════════════
-# SEKME 8: OCR + SIKIŞTURMA
-# ═══════════════════════════════════════════════════
-with tab8:
-    st.subheader("🔍 OCR + Sıkıştırma Pipeline")
-    st.markdown(
-        "**Görüntüdeki metni AI ile oku → Huffman + LZW ile sıkıştır.** "
-        "Taranmış belgeler, faturalar, kitap sayfaları için ideal. "
-        "AI (vision modeli) OCR yapar, ardından en iyi algoritma seçilir."
-    )
-
-    st.info("💡 Akış: 📷 Görüntü → 🤖 AI OCR → 📝 Metin → 🗜️ Huffman / LZW")
-
-    ocr_file = st.file_uploader("Metin içeren görüntü yükle", type=["png", "jpg", "jpeg"],
-                                key="ocr_upload")
-
-    if ocr_file:
-        ocr_img = Image.open(ocr_file)
-        st.image(ocr_img, caption="Yüklenen görüntü", width=400)
-
-        if st.button("▶ OCR Oku ve Sıkıştır", key="ocr_btn"):
-            if not api_key:
-                st.error("Sol menüden Groq API key gir.")
-            else:
-                # Adım 1: OCR
-                with st.spinner("AI görüntüdeki metni okuyor..."):
-                    try:
-                        ocr_result = ocr_extract(ocr_img)
-                        extracted_text = ocr_result["text"]
-                        ocr_tokens = ocr_result["tokens"]
-
-                        st.markdown("### 📝 Çıkarılan Metin")
-                        st.text_area("OCR Sonucu", extracted_text, height=150)
-                        st.caption(f"Karakter sayısı: {len(extracted_text):,} | Token: {ocr_tokens}")
-
-                        if len(extracted_text) < 5 or "bulunamadı" in extracted_text.lower():
-                            st.warning("Görüntüde okunabilir metin bulunamadı.")
-                        else:
-                            # Adım 2: Sıkıştırma
-                            with st.spinner("Metin sıkıştırılıyor..."):
-                                comp = compress_extracted(extracted_text)
-
-                            st.markdown("### 🗜️ Sıkıştırma Sonuçları")
-                            c1, c2, c3 = st.columns(3)
-                            c1.metric("Orijinal Metin", f"{comp['original_bits']:,} bit")
-                            c2.metric("Huffman",
-                                      f"{comp['huffman']['total']:,} bit",
-                                      delta=f"%{(1-comp['huffman']['ratio'])*100:.1f} küçüldü")
-                            c3.metric("LZW",
-                                      f"{comp['lzw']['bits']:,} bit",
-                                      delta=f"%{(1-comp['lzw']['ratio'])*100:.1f} küçüldü")
-
-                            best = "Huffman" if comp["best"] == "huffman" else "LZW"
-                            st.success(f"✅ Bu metin için en iyi algoritma: **{best}**")
-
-                            # Grafik
-                            fig = go.Figure(go.Bar(
-                                x=["Orijinal", "Huffman", "LZW"],
-                                y=[comp["original_bits"],
-                                   comp["huffman"]["total"],
-                                   comp["lzw"]["bits"]],
-                                marker_color=["#636EFA", "#EF553B", "#00CC96"],
-                                text=[f"{v:,} bit" for v in [
-                                    comp["original_bits"],
-                                    comp["huffman"]["total"],
-                                    comp["lzw"]["bits"]]],
-                                textposition="outside",
-                            ))
-                            fig.update_layout(
-                                title="OCR Metni Sıkıştırma Karşılaştırması",
-                                yaxis_title="Bit", height=380, showlegend=False)
-                            st.plotly_chart(fig, use_container_width=True)
-
-                    except Exception as e:
-                        st.error(f"Hata: {type(e).__name__}: {e}")
-                        with st.expander("Detay"):
-                            st.exception(e)
-    else:
-        st.info("Metin içeren bir görüntü yükle (taranmış belge, fatura, kitap sayfası vb.)")
-
 
 # ═══════════════════════════════════════════════════
 # SEKME 9: SHANNON ENTROPİSİ
