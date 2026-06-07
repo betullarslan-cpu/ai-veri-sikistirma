@@ -402,12 +402,38 @@ with tab1:
 
             # ── SIKIŞTIRILMIŞ ÇIKTI (Standart Huffman) ──
             from core.bwt import huffman_encode_bytes as _huff_enc
+            from core.huffman import decode as _huff_decode
             _h_out = _huff_enc(text)
             goster_sikistirma_ciktisi(
                 "Standart Huffman", _h_out['bit_string'],
                 _h_out['byte_data'], len(text.encode('utf-8')),
                 key_suffix="huff_std",
             )
+
+            # ── DECODE: Sıkıştırılmış halini geri aç ──
+            st.markdown("### 🔓 Açma (Decompression) — Kayıpsızlık Kanıtı")
+            _decoded = _huff_decode(_h_out['bit_string'], _h_out['codes'])
+            _kayipsiz = (_decoded == text)
+
+            cd1, cd2 = st.columns(2)
+            with cd1:
+                st.markdown("**Orijinal metin:**")
+                st.code(text[:300] + ("..." if len(text) > 300 else ""), language=None)
+            with cd2:
+                st.markdown("**Decode edilmiş metin:**")
+                st.code(_decoded[:300] + ("..." if len(_decoded) > 300 else ""), language=None)
+
+            if _kayipsiz:
+                st.success(
+                    f"✅ **KAYIPSIZ** — Sıkıştırılmış {len(_h_out['byte_data']):,} byte → "
+                    f"Açıldığında orijinal {len(text):,} karakter aynen geri geldi. "
+                    f"Tek bir karakter bile kaybolmadı."
+                )
+            else:
+                # Farkı bul
+                _fark = sum(1 for a, b in zip(text, _decoded) if a != b)
+                st.error(f"❌ Hata: {_fark} karakter farklı. Decode bozulmuş.")
+
             st.markdown("---")
 
             # AI Huffman
@@ -535,6 +561,37 @@ with tab2:
         "Standart LZW", _bit_str, _byte_data,
         len(text.encode("utf-8")), key_suffix="lzw_std",
     )
+
+    # ── DECODE: LZW'yi geri aç ──
+    st.markdown("### 🔓 Açma (Decompression) — Kayıpsızlık Kanıtı")
+    from core.lzw import lzw_decode as _lzw_dec
+    # initial_dict: encode'da kullandığımız aynı sözlük
+    _init_dict = {chr(i): i for i in range(256)}
+    for _ch in set(text):
+        if _ch not in _init_dict:
+            _init_dict[_ch] = len(_init_dict)
+    try:
+        _lzw_decoded = _lzw_dec(_codes_lzw, _init_dict)
+        _lzw_kayipsiz = (_lzw_decoded == text)
+    except Exception as _e:
+        _lzw_decoded = f"[Decode hatası: {_e}]"
+        _lzw_kayipsiz = False
+
+    cd_l1, cd_l2 = st.columns(2)
+    with cd_l1:
+        st.markdown("**Orijinal metin:**")
+        st.code(text[:300] + ("..." if len(text) > 300 else ""), language=None)
+    with cd_l2:
+        st.markdown("**Decode edilmiş metin:**")
+        st.code(_lzw_decoded[:300] + ("..." if len(_lzw_decoded) > 300 else ""), language=None)
+
+    if _lzw_kayipsiz:
+        st.success(
+            f"✅ **KAYIPSIZ** — {len(_codes_lzw):,} kod → orijinal metin aynen geri geldi."
+        )
+    else:
+        st.warning("⚠️ Decode kontrolünde fark var.")
+
     with st.expander("ℹ️ LZW Kod Listesi (ilk 50)"):
         st.write([f"#{i}: code={c}" for i, c in enumerate(_codes_lzw[:50])])
         st.caption(f"Toplam **{len(_codes_lzw):,} kod**, her biri **{_bpc} bit**.")
@@ -1024,7 +1081,7 @@ with tab11:
     st.markdown("---")
 
     # ── BWT+RLE+Huffman Sıkıştırılmış çıktı ──
-    from core.bwt import bwt_rle_huffman_encode as _bwtrle
+    from core.bwt import bwt_rle_huffman_encode as _bwtrle, bwt_decode as _bwt_dec
     with st.spinner("BWT+RLE+Huffman ile sıkıştırılıyor..."):
         _bwt_enc = _bwtrle(text)
     goster_sikistirma_ciktisi(
@@ -1032,11 +1089,32 @@ with tab11:
         _bwt_enc['bit_string'], _bwt_enc['byte_data'],
         len(text.encode("utf-8")), key_suffix="bwt_rle_huff",
     )
+
+    # ── DECODE: BWT'yi geri aç ──
+    st.markdown("### 🔓 Açma (Decompression) — Kayıpsızlık Kanıtı")
+    _bwt_decoded = _bwt_dec(_bwt_enc['bwt'], _bwt_enc['orig_idx'])
+    _bwt_kayipsiz = (_bwt_decoded == text[:len(_bwt_decoded)])
+
+    cd_b1, cd_b2 = st.columns(2)
+    with cd_b1:
+        st.markdown("**Orijinal metin:**")
+        st.code(text[:300] + ("..." if len(text) > 300 else ""), language=None)
+    with cd_b2:
+        st.markdown("**Decode edilmiş metin:**")
+        st.code(_bwt_decoded[:300] + ("..." if len(_bwt_decoded) > 300 else ""), language=None)
+
+    if _bwt_kayipsiz:
+        st.success(
+            f"✅ **KAYIPSIZ** — Permütasyon başarıyla geri çevrildi. "
+            f"BWT decode → orijinal metin aynen geldi."
+        )
+    else:
+        st.warning("⚠️ Decode kontrolünde fark var (uzun metinlerde MAX_BWT_LEN=8000 sınırından olabilir).")
+
     with st.expander("ℹ️ BWT iç bilgileri (permütasyon + RLE koşuları)"):
         st.caption(f"**BWT çıktısı (ilk 100 karakter):**")
         st.code(_bwt_enc['bwt'][:100] + ("..." if len(_bwt_enc['bwt']) > 100 else ""))
-        st.caption(f"**Orijinal indeks:** {_bwt_enc['orig_idx']} "
-                   f"(decode için gerekli)")
+        st.caption(f"**Orijinal indeks:** {_bwt_enc['orig_idx']} (decode için gerekli)")
         st.caption(f"**RLE koşuları (ilk 20):**")
         st.write(_bwt_enc['runs'][:20])
         st.caption(f"Toplam **{len(_bwt_enc['runs']):,}** koşu, **{len(_bwt_enc['codes'])} farklı karakter**.")

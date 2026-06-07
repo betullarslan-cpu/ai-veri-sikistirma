@@ -52,6 +52,20 @@ def encode(text):
     return encoded_bits, codes
 
 
+def decode(encoded_bits: str, codes: dict) -> str:
+    """Huffman ile sikistirilmis bit dizisini geri ac."""
+    # Ters tablo: kod → karakter
+    reverse_codes = {v: k for k, v in codes.items()}
+    result = []
+    buf = ""
+    for bit in encoded_bits:
+        buf += bit
+        if buf in reverse_codes:
+            result.append(reverse_codes[buf])
+            buf = ""
+    return "".join(result)
+
+
 def compression_ratio(original_text, encoded_bits):
     original_bits = len(original_text) * 8
     compressed_bits = len(encoded_bits)
