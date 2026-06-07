@@ -171,11 +171,11 @@ project_veri/
 
 ---
 
-## ⚠️ Sınırlamalar
+## 📐 Teknik Not
 
-Shannon entropisi karakter-bağımsız varsayım altında hesaplanır (üst sınır).
-BWT tek-blokta 8.000 karakterle sınırlıdır — uzun metinler otomatik olarak
-bloklara ayrılır, kayıpsızlık tüm metin için garantilidir.
+Shannon entropisi karakter-bağımsız (iid) varsayım altında hesaplanır
+ve teorik üst sınırı verir. BWT modülü bloklu çalışır — tüm metin uzunluklarında
+kayıpsız sıkıştırma garantilidir.
 
 ---
 
