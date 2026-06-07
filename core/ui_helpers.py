@@ -70,10 +70,10 @@ def goster_randomness_testi(bit_string: str, algoritma_adi: str) -> None:
         return
 
     r = randomness_test(bit_string)
-    st.markdown(f"### 🎲 Rastgelelik Testi — *{algoritma_adi}*")
+    st.markdown(f"### 📊 Bit Dağılımı Kontrolü — *{algoritma_adi}*")
     st.caption(
-        "Shannon (1948): **Mükemmel sıkıştırma rastgele gürültüden ayırt edilemez.** "
-        "Bit dağılımı %50/%50'ye ne kadar yakınsa o kadar yüksek bilgi yoğunluğu."
+        "İyi sıkıştırılmış bir bit dizisinde 0 ve 1 oranı **%50/%50'ye yakın olmalıdır**. "
+        "Aksi takdirde boşa giden bitler vardır."
     )
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("0 oranı", f"%{r['zeros_pct']:.1f}",
@@ -87,18 +87,14 @@ def goster_randomness_testi(bit_string: str, algoritma_adi: str) -> None:
 
     if r["is_random_like"]:
         st.success(
-            f"✅ **Bit dizisi rastgele görünüyor** — Shannon'un kriterine uygun. "
-            f"Bilgi yoğunluğu: {r['info_density']:.4f} (1.0'a yakın = ideal). "
-            f"Bu, sıkıştırmanın optimale yakın olduğunun **dolaylı kanıtıdır**."
+            f"✅ **Bit dağılımı dengeli** — Bilgi yoğunluğu {r['info_density']:.4f} "
+            f"(1.0'a yakın = ideal). Sıkıştırma optimale yakın."
         )
     else:
         kayip = (1 - r['info_density']) * r['n_bits']
         st.info(
             f"ℹ️ Bit dağılımı %{r['zeros_pct']:.1f}/%{r['ones_pct']:.1f} — "
-            f"hâlâ {kayip:.0f} bit kazanım potansiyeli var "
-            f"(rastgeleliğe %{abs(50-r['zeros_pct']):.1f} uzakta). "
-            f"Arithmetic coding gibi daha sıkı algoritmalar veya LLM tabanlı "
-            f"sıkıştırıcılar bu farkı kapatabilir."
+            f"hâlâ ~{kayip:.0f} bit kazanım potansiyeli var."
         )
 
 

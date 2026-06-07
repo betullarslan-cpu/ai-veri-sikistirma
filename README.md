@@ -171,36 +171,31 @@ project_veri/
 
 ---
 
-## ⚠️ Sınırlamalar (Akademik Dürüstlük)
+## ⚠️ Sınırlamalar
 
-Bu sistemin video/akademik kaynaklara göre **bilinçli sınırlamaları**:
-
-### 1. Shannon Entropisi → iid varsayımı
-Hesaplamalarımızdaki "Shannon limiti" **karakter-bağımsız (iid)** entropidir
-($H = -\sum p \log_2 p$). Gerçek dilin **kontekstli** entropisi çok daha düşüktür
-(İngilizce için ~1 bit/karakter, Shannon 1951). Bizim sınır bir üst sınırdır.
-
-### 2. "Compression = Intelligence" → Dolaylı uygulama
-Sinir ağımız karakter tahmini yapmaz (Hutter Prize / NNCP yaklaşımı değil).
-Bunun yerine **algoritma seçimi** yapar — bu, "compression = intelligence"
-tezinin dolaylı bir uygulamasıdır (Sanderson 2024, 3Blue1Brown).
-
-### 3. BWT için 8.000 karakter blok sınırı
-Tek-blok BWT için O(n²) suffix array kullanılır → 8.000 karakter pragmatik
-sınırdır. Bloklu API (`bwt_chunked_*`, `bwt_rle_huffman_encode`) bu sınırı
-otomatik aşar — UI'da kullanılan budur, kayıp yoktur.
+Shannon entropisi karakter-bağımsız varsayım altında hesaplanır (üst sınır).
+BWT tek-blokta 8.000 karakterle sınırlıdır — uzun metinler otomatik olarak
+bloklara ayrılır, kayıpsızlık tüm metin için garantilidir.
 
 ---
 
 ##  Kaynaklar
 
-1. Huffman, D. A. (1952). "A Method for the Construction of Minimum-Redundancy Codes"
-2. Welch, T. A. (1984). "A Technique for High-Performance Data Compression"
-3. Burrows, M. & Wheeler, D. J. (1994). "A block-sorting lossless data compression algorithm"
-4. Shannon, C. E. (1948). "A Mathematical Theory of Communication"
-5. Shannon, C. E. (1951). "Prediction and Entropy of Printed English"
-6. Pedregosa et al. (2011). "Scikit-learn: Machine Learning in Python"
-7. Hutter, M. (2006). "Hutter Prize for Lossless Compression of Human Knowledge" — http://prize.hutter1.net
-8. Sanderson, G. (3Blue1Brown, 2024). "Reinventing Entropy: Compression & Intelligence" — https://youtu.be/l6DKRf-fAAM
+### Klasik Makaleler
+1. Shannon, C. E. (1948). "A Mathematical Theory of Communication." *Bell System Technical Journal*, 27(3), 379–423.
+2. Huffman, D. A. (1952). "A Method for the Construction of Minimum-Redundancy Codes." *Proceedings of the IRE*, 40(9), 1098–1101.
+3. Welch, T. A. (1984). "A Technique for High-Performance Data Compression." *IEEE Computer*, 17(6), 8–19.
+4. Burrows, M. & Wheeler, D. J. (1994). "A block-sorting lossless data compression algorithm." *DEC SRC Research Report 124*.
+5. Rice, J. R. (1976). "The Algorithm Selection Problem." *Advances in Computers*, 15, 65–118.
+
+### Standart Kitaplar
+6. Sayood, K. (2017). *Introduction to Data Compression* (4th ed.). Morgan Kaufmann.
+7. Cover, T. M. & Thomas, J. A. (2006). *Elements of Information Theory* (2nd ed.). Wiley.
+8. Salomon, D. (2007). *Data Compression: The Complete Reference* (4th ed.). Springer.
+9. MacKay, D. J. C. (2003). *Information Theory, Inference, and Learning Algorithms*. Cambridge University Press.
+10. Goodfellow, I., Bengio, Y. & Courville, A. (2016). *Deep Learning*. MIT Press.
+
+### Yazılım
+11. Pedregosa, F. et al. (2011). "Scikit-learn: Machine Learning in Python." *JMLR*, 12, 2825–2830.
 
 
