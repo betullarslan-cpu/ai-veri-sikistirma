@@ -1,11 +1,8 @@
-# YILDIZ TEKNİK ÜNİVERSİTESİ
-# BİLGİSAYAR MÜHENDİSLİĞİ BÖLÜMÜ
 
-## VERİ SIKIŞTIRMA DERSİ — DÖNEM PROJESİ RAPORU
 
 **Proje Adı:** AI-Destekli Veri Sıkıştırma Sistemi
-**Tarih:** Haziran 2026
-**Öğrenci:** Betül Arslan
+
+
 **GitHub:** https://github.com/betullarslan-cpu/ai-veri-sikistirma
 **Canlı Demo:** https://huggingface.co/spaces/tien23/ai-veri-sikistirma
 
@@ -399,4 +396,4 @@ streamlit run app.py
 
 ---
 
-*Bu rapor Veri Sıkıştırma dersi dönem projesi kapsamında hazırlanmıştır.*
+
