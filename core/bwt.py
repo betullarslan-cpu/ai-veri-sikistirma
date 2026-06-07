@@ -38,7 +38,14 @@ TEORİK ÖZELLİKLER
 
 YENİLİKLER (Bu Projede)
 -----------------------
-- **MAX_BWT_LEN=8000:** Demo için pratik sınır (O(n²) sorununu önler)
+- **İki API katmanı:**
+    * Tek-blok (bwt_encode, bwt_decode):
+        İlk MAX_BWT_LEN=8000 karakter; O(n²) suffix array için
+        performans sınırı. UI'da istatistik/önizleme amaçlı.
+    * Bloklu (bwt_chunked_encode, bwt_chunked_decode):
+        Sınırsız uzunluk; her 8000 karakter bir blok. Gerçek bzip2 mantığı.
+    * Üst seviye (bwt_rle_huffman_encode):
+        Otomatik bloklu (8000+ metinde n_chunks oluşur). UI'da kullanılır.
 - **Türkçe karakter desteği:** EOF_CHAR=\\x00 → çakışma yok
 - **Bit-bit encode:** Sadece teorik bit sayısı değil, gerçek binary çıktı üretir
 
@@ -57,11 +64,19 @@ from collections import Counter
 # BWT sonu işaretçisi — metinde bulunmayan özel karakter
 EOF_CHAR = "\x00"
 
-MAX_BWT_LEN = 8000  # Tek blok için üst sınır (O(n²) suffix array)
-# 8000 karakterin üstündeki metinler bwt_chunked_encode/decode ile
-# BLOK BLOK işlenir (gerçek bzip2 mantığı: blok blok BWT → birleştirme).
-# Bu sayede sınırsız uzunlukta metin kayıpsız sıkıştırılabilir.
-BLOCK_BOUNDARY = "\x01"  # Blokları ayırmak için kullanılan özel karakter
+MAX_BWT_LEN = 8000  # Tek blok için üst sınır (suffix array O(n²) limiti)
+# DAVRANIŞ:
+#   - bwt_encode(text):       TEK BLOK, 8000'i aşan metni KESER.
+#                              Bilinçli karar — basit eğitim implementasyonu.
+#   - bwt_chunked_encode(text): BLOKLU, sınırsız uzunluk, gerçek bzip2 mantığı.
+#   - bwt_rle_huffman_encode(text): Otomatik bloklu (üst seviye, UI kullanıyor).
+#
+# Hocaya net mesaj:
+# "Bu eğitim implementasyonu BWT için tek-blok ve bloklu iki API sunar.
+#  Tek-blok (bwt_encode) ilk 8000 karakteri işler — performans için.
+#  Bloklu API (bwt_chunked_encode) sınırsız uzunlukta kayıpsız çalışır.
+#  UI'da BWT sekmesinde bloklu olan kullanıldığı için kullanıcıya kayıp YOK."
+BLOCK_BOUNDARY = "\x01"  # Bloklu modda iç işaretçi
 
 
 # ─────────────────────────────────────────────────────
@@ -70,14 +85,24 @@ BLOCK_BOUNDARY = "\x01"  # Blokları ayırmak için kullanılan özel karakter
 
 def bwt_encode(text: str) -> tuple:
     """
-    Burrows-Wheeler Transform uygula.
+    Tek-blok Burrows-Wheeler Transform.
+
+    DİKKAT — DAVRANIŞ:
+        Bu fonksiyon TEK BLOK çalışır. 8000 karakter (MAX_BWT_LEN) üstündeki
+        metinler KESİLİR. Bu basit/eğitim implementasyonu için bilinçli bir
+        karardır (suffix array O(n²) kompleksitesi).
+
+        Uzun metinlerde kayıpsız sıkıştırma için:
+            bwt_chunked_encode(text)         — bloklu BWT
+            bwt_rle_huffman_encode(text)     — otomatik bloklu (UI kullanır)
 
     Returns:
         (bwt_text, original_index)
-        bwt_text  : dönüştürülmüş metin (karakter kümeleri oluşur)
-        original_index : orijinal stringin sıralamadaki konumu
+        bwt_text       : dönüştürülmüş metin (karakter kümeleri oluşur)
+        original_index : orijinal string'in sıralamadaki konumu (decode için)
     """
-    # Çok uzun metinleri kes — demo için yeterli
+    # MAX_BWT_LEN'i aşan metinler kesilir.
+    # Uzun metinler için bwt_chunked_encode() kullanılmalı.
     if len(text) > MAX_BWT_LEN:
         text = text[:MAX_BWT_LEN]
 
@@ -465,7 +490,9 @@ def compare(text: str) -> dict:
         original_bits, results (dict), best, improvement_pct, ...
     }
     """
-    # Metni kısalt (çok uzunsa yavaşlar)
+    # NOT: compare() karşılaştırma için tek-blok BWT kullanır (hızlı analiz).
+    # Uzun metinde gerçek (kayıpsız) sıkıştırma için bwt_rle_huffman_encode()
+    # otomatik bloklu çalışır — UI bunu kullanır, kayıp yoktur.
     if len(text) > MAX_BWT_LEN:
         text = text[:MAX_BWT_LEN]
 
@@ -556,7 +583,13 @@ def compare(text: str) -> dict:
 # ─────────────────────────────────────────────────────
 
 def bwt_stats(text: str) -> dict:
-    """BWT'nin metin üzerindeki etkisini göster."""
+    """
+    BWT'nin metin üzerindeki etkisini göster (görsel istatistikler).
+
+    NOT: İstatistikler ilk MAX_BWT_LEN karakter için hesaplanır
+    (UI'da hızlı önizleme amacıyla). Gerçek sıkıştırma
+    bwt_rle_huffman_encode() ile bloklu yapılır.
+    """
     if len(text) > MAX_BWT_LEN:
         text = text[:MAX_BWT_LEN]
 
