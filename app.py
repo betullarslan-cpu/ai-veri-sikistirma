@@ -22,9 +22,6 @@ from core.ai_engine import (
     generate_lzw_dictionary,
 )
 from core.entropy import shannon_entropy, theoretical_min_bits, compression_efficiency, per_char_analysis
-from core.selector import analyze_and_select, run_selected
-from core.image_compress import compare as image_compare
-from core.ocr_compress import ocr_extract, compress_extracted
 from core.hybrid import hybrid_compress, train_from_corpus, smart_hybrid
 from core.bwt import compare as bwt_compare, bwt_stats, bwt_encode, rle_compress
 from core.nn_selector import predict as nn_predict, train as nn_train, extract_features
