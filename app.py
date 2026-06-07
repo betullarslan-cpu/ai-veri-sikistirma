@@ -159,11 +159,14 @@ Her bölümün altında **💡 ile başlayan kutucuklar** sonucun ne anlama geld
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Orijinal", f"{_orig:,} bit",
                   help="Sıkıştırılmadan önceki boyut. Her karakter UTF-8'de 8 bit varsayılır.")
-        m2.metric("Shannon limiti", f"{_min:,} bit",
+        m2.metric("Shannon limiti (iid)", f"{_min:,} bit",
                   delta=f"%{(1-_min/_orig)*100:.1f} küçülme",
                   delta_color="off",
-                  help="Bilgi teorisinin söylediği MUTLAK minimum. Hiçbir algoritma "
-                       "bunun altına inemez (kayıpsız sıkıştırmada).")
+                  help="Karakter-bağımsız (iid) Shannon entropisi limiti. "
+                       "Karakterlerin bağımsız olduğunu varsayar. "
+                       "Gerçek dilin kontekstli entropisi (n-gram, LLM tabanlı) "
+                       "çok daha düşüktür — örn. İngilizce için ~1 bit/karakter "
+                       "(Shannon 1951). LLM tabanlı sıkıştırıcılar bu sınıra yaklaşır.")
         m3.metric("Standart Huffman", f"{_sm['standard_bits']:,} bit",
                   delta=f"%{(1-_sm['standard_ratio'])*100:.1f} küçülme",
                   delta_color="off",
@@ -175,6 +178,17 @@ Her bölümün altında **💡 ile başlayan kutucuklar** sonucun ne anlama geld
                   help="Sinir ağı en uygun algoritmayı seçti ve onu çalıştırdı. "
                        "Bu projenin nihai sonucudur.")
 
+        # Bit/karakter sayısal karşılaştırması (videodaki Shannon analizine paralel)
+        _char_count = len(text) if len(text) > 0 else 1
+        _bpc_smart = _sm['smart_bits'] / _char_count
+        _bpc_shan  = _min / _char_count
+        st.caption(
+            f"📐 **Karakter başına bit:** "
+            f"Akıllı Hibrit **{_bpc_smart:.2f}** bit/karakter · "
+            f"Shannon (iid) **{_bpc_shan:.2f}** bit/karakter · "
+            f"Referans: İngilizce kontekstli ~1 bit/karakter (Shannon 1951)."
+        )
+
         # ── METRIKLER NE ANLAMA GELIYOR? ──
         with st.expander("💡 Yukarıdaki metrikler ne anlama geliyor?"):
             _ks_huff = (1 - _sm['standard_ratio']) * 100
@@ -182,8 +196,11 @@ Her bölümün altında **💡 ile başlayan kutucuklar** sonucun ne anlama geld
             _shan_pct = (1 - _min/_orig) * 100
             st.markdown(f"""
 - **Orijinal ({_orig:,} bit):** Metin sıkıştırılmadan saklansaydı bu kadar yer kaplardı.
-- **Shannon limiti ({_min:,} bit, %{_shan_pct:.1f} küçülme):**
-  Karakter olasılıklarına göre teorik en küçük boyut. Hiçbir kayıpsız algoritma bunun altına inemez.
+- **Shannon limiti (iid) ({_min:,} bit, %{_shan_pct:.1f} küçülme):**
+  Karakter-bağımsız varsayım altında teorik minimum (Shannon 1948). Karakterler arası
+  bağımlılık (n-gram, kontekst) hesaba katılmamıştır. Gerçek dilin **kontekstli**
+  entropisi daha düşüktür (~1 bit/karakter, Shannon 1951). LLM tabanlı sıkıştırıcılar
+  (NNCP, DeepZip) buna yaklaşır — bu sistemin kapsamı dışındadır.
 - **Standart Huffman ({_sm['standard_bits']:,} bit, %{_ks_huff:.1f} küçülme):**
   Klasik Huffman + frekans tablosunun ek yükü. 1952'den beri kullanılan referansımız.
 - **🏆 Akıllı Hibrit ({_sm['smart_bits']:,} bit, %{_ks_smart:.1f} küçülme):**
@@ -1186,10 +1203,26 @@ with tab6:
 with tab9:
     st.subheader("📐 Shannon Entropisi — Teorik Sınır Analizi")
     st.markdown(
-        "**Shannon Entropisi**, bir verinin teorik olarak sıkıştırılabilecek "
-        "**minimum bit sayısını** belirler. Hiçbir kayıpsız algoritma bu sınırın altına inemez. "
-        "Algoritmamızın bu sınıra ne kadar yaklaştığını ölçüyoruz."
+        "**Shannon Entropisi** (1948), bir verinin **karakter-bağımsız (iid)** "
+        "varsayım altında sıkıştırılabilecek minimum bit sayısını verir. "
+        "Karakter bazlı klasik algoritmalar (Huffman, Aritmetik) bu sınıra yakınsar."
     )
+    with st.expander("⚠️ Önemli ayrım: iid Shannon vs Kontekstli Shannon"):
+        st.markdown("""
+**Bu sayfada hesaplanan Shannon Entropisi karakter-bağımsız (iid) varsayım altındadır:**
+$H_{iid} = -\\sum p(c) \\cdot \\log_2 p(c)$
+
+**Ama gerçek dilin entropisi çok daha düşüktür** çünkü karakterler birbiriyle bağımlı:
+- "th" çoğu zaman "e" ile devam eder
+- Cümleler bağlamla tahmin edilebilir
+- Shannon'un 1951 deneyi: **İngilizce ~1 bit/karakter** (kontekstli)
+
+**Bu projedeki "Shannon limiti" iid limittir** (üst sınır). Gerçek dilin kontekstli
+entropisine yaklaşmak için **dil modeli tabanlı sıkıştırıcılar** gerekir
+(NNCP, DeepZip, LLM-tabanlı Hutter Prize sistemleri). Bu projenin kapsamı dışındadır.
+
+📖 Detay: 3Blue1Brown "Compression & Intelligence" serisi (2024).
+        """)
 
     # Otomatik hesapla — API key gerekmez
     entropy  = shannon_entropy(text)
