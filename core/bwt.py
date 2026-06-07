@@ -1,16 +1,53 @@
 """
-BWT (Burrows-Wheeler Transform) + RLE + Huffman Pipeline
-----------------------------------------------------------
-bzip2'nin temel fikri:
+Burrows-Wheeler Transform + RLE + Huffman (bzip2 Tekniği)
+==========================================================
 
-1. BWT  → benzer karakterleri gruplar ("aaaa...bbbb..." gibi uzun koşular oluşturur)
-2. RLE  → tekrarlı koşuları (ch, count) çiftine sıkıştırır
-3. Huffman → sembolleri optimal bit uzunluğuyla kodlar
+ALGORİTMA MANTIĞI
+-----------------
+3 aşamalı bir pipeline:
 
-Neden Standart Huffman'dan iyi?
-  - Standart Huffman her karakteri bağımsız işler → tekrarlı yapıdan faydalanmaz
-  - BWT sonrası karakterler kümelenir → RLE çok kısa output üretir
-  - Tekrarlı metinde 10x+, doğal dilde %10-20 daha iyi sıkıştırma
+[BWT] Permütasyon — benzer karakterleri yan yana getir
+    - Metnin tüm döngüsel rotasyonları üretilir
+    - Bunlar leksikografik olarak sıralanır
+    - Son sütun alınır + orijinal indeks kaydedilir
+    - Sonuç: "...aaaa...bbbb..." gibi kümelenmiş çıktı
+
+[RLE] Run-Length Encoding — tekrarları sıkıştır
+    - Ardışık aynı karakterler (ch, count) çiftine dönüştürülür
+    - "aaaaa" → (a, 5)
+    - BWT sonrası kümeler oluştuğu için RLE çok kazandırır
+
+[Huffman] Optimal kodlama
+    - RLE sonrası kalan semboller Huffman ile bit dizisine çevrilir
+    - Count'lar Elias-gamma kodu ile
+
+GERİ ÇEVİRME (Decode)
+---------------------
+BWT'nin sihri: kayıpsız tersine çevrilebilir.
+    - Karakterlerin rank'ları hesaplanır (kaçıncı kez göründü)
+    - F sütunu (sıralı dizi) konumları hesaplanır
+    - LF Mapping kurulur: L'deki i konumu F'deki konuma eşler
+    - Orijinal indeksten başlayıp LF zinciri ile metin geri kurulur
+
+TEORİK ÖZELLİKLER
+-----------------
+- **Karmaşıklık:** O(n² log n) basit suffix array (büyük n'de yavaş)
+- **Sıkıştırma oranı:** bzip2 seviyesinde — doğal dil/log/DNA'da %85-95
+- **Kayıpsız:** Decode garantili (LF mapping bijektif)
+- **Hız:** Encode yavaş, decode hızlı (asimetrik)
+
+YENİLİKLER (Bu Projede)
+-----------------------
+- **MAX_BWT_LEN=8000:** Demo için pratik sınır (O(n²) sorununu önler)
+- **Türkçe karakter desteği:** EOF_CHAR=\\x00 → çakışma yok
+- **Bit-bit encode:** Sadece teorik bit sayısı değil, gerçek binary çıktı üretir
+
+REFERANS
+--------
+Burrows, M., & Wheeler, D. J. (1994). "A block-sorting lossless data
+compression algorithm." Digital Equipment Corporation Research Report 124.
+
+bzip2 implementasyonu: https://sourceware.org/bzip2/
 """
 
 import math

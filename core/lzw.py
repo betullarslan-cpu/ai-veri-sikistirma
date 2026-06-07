@@ -1,9 +1,42 @@
 """
-LZW Sıkıştırma — Standart + AI Akıllı Sözlük
-----------------------------------------------
-Standart LZW : sözlük sadece tek karakterlerle başlar
-AI-LZW       : Groq'tan alınan yaygın kelime/ifadelerle sözlük önceden zenginleştirilir
-               → daha erken ve daha uzun eşleşmeler → daha iyi sıkıştırma
+LZW Sıkıştırma — Lempel-Ziv-Welch (1984)
+==========================================
+
+ALGORİTMA MANTIĞI
+-----------------
+LZW, sözlük tabanlı bir kayıpsız sıkıştırma algoritmasıdır. Tekrarlayan
+karakter dizilerini sözlükteki indekslerle değiştirerek çalışır.
+
+Encode adımları:
+1. Başlangıç sözlüğü: 0-255 ASCII karakterler (+ Türkçe karakterler)
+2. Mevcut girdiyi (w) bir karaktere (c) ekle → wc
+3. Eğer wc sözlükteyse, w'yu wc yap, devam et
+4. Sözlükte değilse: w'nin kodunu yaz, wc'yi sözlüğe ekle, w'yu c yap
+5. Sonda kalan w'nin kodunu yaz
+
+Decode adımları:
+- Aynı başlangıç sözlüğüyle başla
+- Her kodu okuyup karşılık gelen string'i yaz
+- Sözlüğü encoder ile **aynı sırada** büyüt (özellik!)
+
+TEORİK ÖZELLİKLER
+-----------------
+- Sözlük dosya başında **gönderilmez** — decoder kendi sözlüğünü kurar
+- Tekrarlı verilerde çok iyi (her pattern bir kod = log₂(N) bit)
+- Karmaşıklık: O(n) encode, O(n) decode
+- ASCII başlangıç + Türkçe karakter eklemesi (Unicode > 255 için zorunlu)
+
+YENİLİKLER (Bu Projede)
+-----------------------
+- **AI Akıllı Sözlük:** Groq LLM'den metne özgü en sık 60 kelime alınır,
+  başlangıç sözlüğüne eklenir. Bu sayede ilk pattern eşleşmeleri daha hızlı.
+- **Unicode desteği:** Türkçe karakterler (ş, ğ, ü, ö, ç, ı) başlangıç
+  sözlüğüne eklenir — KeyError'ı önler.
+
+REFERANS
+--------
+Welch, T. A. (1984). "A Technique for High-Performance Data Compression."
+IEEE Computer, 17(6), 8–19.
 """
 
 from collections import Counter

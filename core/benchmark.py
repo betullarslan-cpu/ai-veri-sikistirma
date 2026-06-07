@@ -161,6 +161,66 @@ def bizim_algoritmalar_benchmark(text: str) -> Dict:
     return sonuclar
 
 
+def scaling_analizi(metin_temeli: str, katlar: list = None) -> Dict:
+    """
+    Metni farklı boyutlarda çoğaltıp her bir algoritma için süre ve oran ölç.
+
+    Bu fonksiyon "O(n) mi O(n²) mi?" sorusunun ampirik cevabını verir.
+
+    Args:
+        metin_temeli: Çoğaltılacak temel metin (bir cümle/paragraf)
+        katlar: Test edilecek çarpanlar [1, 5, 10, 25, 50, 100]
+
+    Returns:
+        {
+            "boyutlar":  [N karakter],
+            "huffman":   {"sureler_ms": [...], "boyut_byte": [...]},
+            "bwt":       {"sureler_ms": [...], "boyut_byte": [...]},
+            "gzip":      {"sureler_ms": [...], "boyut_byte": [...]},
+        }
+    """
+    import gzip
+    from core.bwt import bwt_rle_huffman_encode
+    from core.huffman import encode as huff_encode
+
+    if katlar is None:
+        katlar = [1, 5, 10, 25, 50]
+
+    sonuc = {
+        "boyutlar": [],
+        "huffman": {"sureler_ms": [], "boyut_byte": []},
+        "bwt":     {"sureler_ms": [], "boyut_byte": []},
+        "gzip":    {"sureler_ms": [], "boyut_byte": []},
+    }
+
+    for k in katlar:
+        metin = metin_temeli * k
+        # BWT için 8000 char sınırı
+        bwt_metin = metin[:8000]
+        sonuc["boyutlar"].append(len(metin))
+
+        # Huffman
+        (bits, codes), h_ms = _olc_zaman(huff_encode, metin)
+        sonuc["huffman"]["sureler_ms"].append(h_ms)
+        sonuc["huffman"]["boyut_byte"].append((len(bits) + 7) // 8)
+
+        # BWT
+        try:
+            (out), b_ms = _olc_zaman(bwt_rle_huffman_encode, bwt_metin)
+            sonuc["bwt"]["sureler_ms"].append(b_ms)
+            sonuc["bwt"]["boyut_byte"].append(len(out["byte_data"]))
+        except Exception:
+            sonuc["bwt"]["sureler_ms"].append(None)
+            sonuc["bwt"]["boyut_byte"].append(None)
+
+        # gzip
+        gz_out, gz_ms = _olc_zaman(gzip.compress, metin.encode("utf-8"), 9)
+        sonuc["gzip"]["sureler_ms"].append(gz_ms)
+        sonuc["gzip"]["boyut_byte"].append(len(gz_out))
+
+    return sonuc
+
+
 def tam_karsilastirma(text: str) -> Dict:
     """
     Hem endüstri standartlarını hem bizim algoritmalarımızı birlikte ölçer.

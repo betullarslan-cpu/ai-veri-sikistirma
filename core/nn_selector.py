@@ -471,6 +471,42 @@ def train(corpus_path: str = None, verbose: bool = True) -> dict:
 # Tahmin
 # ─────────────────────────────────────────
 
+def confusion_matrix_data() -> dict:
+    """
+    Hold-out test setindeki confusion matrix'i döndürür.
+
+    Returns:
+        {"matrix": 3x3 list, "classes": [...], "accuracy": float}
+    """
+    import numpy as np
+    from sklearn.model_selection import train_test_split
+    from sklearn.metrics import confusion_matrix, accuracy_score
+
+    if not os.path.exists(MODEL_FILE):
+        return {"error": "Model henuz egitilmemis"}
+
+    with open(MODEL_FILE, "rb") as f:
+        bundle = pickle.load(f)
+
+    X, y = build_dataset(verbose=False)
+    _, X_test, _, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42,
+        stratify=y if min(np.bincount(y)) >= 2 else None,
+    )
+    X_test_s = bundle["scaler"].transform(X_test)
+    y_pred = bundle["model"].predict(X_test_s)
+
+    cm = confusion_matrix(y_test, y_pred, labels=[0, 1, 2])
+    acc = accuracy_score(y_test, y_pred)
+
+    return {
+        "matrix":   cm.tolist(),
+        "classes":  CLASS_NAMES,
+        "accuracy": float(acc),
+        "n_test":   len(y_test),
+    }
+
+
 def feature_importance(n_repeats: int = 5) -> dict:
     """
     Permutation importance: Her özelliği rastgele karıştırıp doğruluk düşüşünü ölç.

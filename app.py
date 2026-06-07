@@ -918,6 +918,64 @@ with tab4:
             )
             st.caption(f"Sınıf dağılımı: {r['distribution']}")
 
+    # ── Confusion Matrix ──
+    st.markdown("---")
+    st.markdown("### 🎯 Confusion Matrix (Hold-out Test Setinde)")
+    st.caption("Modelin hangi sınıfı doğru/yanlış tahmin ettiğini gösterir. "
+              "Köşegende olanlar doğru tahmin.")
+
+    if st.button("📐 Confusion Matrix Göster", key="cm_btn"):
+        with st.spinner("Confusion matrix hesaplanıyor..."):
+            from core.nn_selector import confusion_matrix_data
+            cm_data = confusion_matrix_data()
+        if "error" in cm_data:
+            st.error(cm_data["error"])
+        else:
+            cm = cm_data["matrix"]
+            classes = cm_data["classes"]
+            # Heatmap
+            fig_cm = go.Figure(go.Heatmap(
+                z=cm,
+                x=[c.upper() for c in classes],
+                y=[c.upper() for c in classes],
+                text=cm,
+                texttemplate="%{text}",
+                textfont={"size": 16, "color": "white"},
+                colorscale="Blues",
+                showscale=True,
+            ))
+            fig_cm.update_layout(
+                title=f"Hold-out Test Doğruluğu: %{cm_data['accuracy']*100:.1f} "
+                      f"({cm_data['n_test']} örnek)",
+                xaxis_title="Tahmin",
+                yaxis_title="Gerçek",
+                height=400,
+            )
+            st.plotly_chart(fig_cm, use_container_width=True)
+
+            # Sınıf bazlı doğruluk
+            st.markdown("**Sınıf Bazlı Performans:**")
+            rows = []
+            for i, c in enumerate(classes):
+                tp = cm[i][i]
+                total = sum(cm[i])
+                acc = tp / total * 100 if total else 0
+                rows.append({
+                    "Sınıf":   c.upper(),
+                    "Toplam":  total,
+                    "Doğru":   tp,
+                    "Doğruluk": f"%{acc:.1f}",
+                })
+            st.dataframe(rows, use_container_width=True, hide_index=True)
+            with st.expander("💡 Nasıl okunur?"):
+                st.markdown("""
+- **Satır:** Gerçek sınıf (doğru cevap)
+- **Sütun:** Modelin tahmini
+- **Köşegen (sol üst → sağ alt):** Doğru tahminler
+- **Köşegen dışı:** Hatalar
+- **Örnek:** "BWT satırında LZW sütununda 5" → 5 BWT örneğini yanlışlıkla LZW dedi
+                """)
+
     # ── Feature Importance — Hangi özellik kararı belirliyor? ──
     st.markdown("---")
     st.markdown("### 🔍 Özellik Önem Analizi (Permutation Importance)")
