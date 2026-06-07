@@ -1,4 +1,4 @@
-# 🏗️ Sistem Mimarisi Diyagramları
+#  Sistem Mimarisi Diyagramları
 
 ## 1. Genel Sistem Akışı
 
