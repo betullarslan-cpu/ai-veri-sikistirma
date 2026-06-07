@@ -157,11 +157,12 @@ def _synthetic_samples(n_per_type: int = 80, seed: int = 42) -> list:
         alphabet = "abcdefghijklmnopqrstuvwxyz "
         samples.append("".join(rng.choice(alphabet) for _ in range(n)))
 
-    # 5. Tekrarli kelimeler — LZW/BWT arasi
-    for _ in range(n_per_type):
+    # 5. Tekrarli kelimeler — LZW'nin guclu yani
+    for _ in range(n_per_type * 2):
         words = ["merhaba", "dunya", "selam", "evet", "hayir", "the", "and", "for",
-                 "veri", "sikistirma", "algoritma", "model"]
-        chosen = [rng.choice(words) for _ in range(rng.randint(30, 100))]
+                 "veri", "sikistirma", "algoritma", "model", "yapay", "zeka",
+                 "bilgisayar", "muhendislik", "proje", "donem", "okul"]
+        chosen = [rng.choice(words) for _ in range(rng.randint(20, 80))]
         samples.append(" ".join(chosen))
 
     # 6. JSON benzeri yapilandirilmis
@@ -179,19 +180,21 @@ def _synthetic_samples(n_per_type: int = 80, seed: int = 42) -> list:
             lines.append(f"[INFO 2026-01-{t:02d}] ok")
         samples.append("\n".join(lines))
 
-    # 8. KISA Turkce/Ingilizce cumleler (overhead-hassas durumlar)
+    # 8. KISA Turkce/Ingilizce cumleler (overhead-hassas — Huffman icin)
     short_phrases = [
         "Bugun hava cok guzel.", "Yarin sinav var.",
         "The quick brown fox.", "Hello world this is a test.",
         "Veri sikistirma onemli bir konudur.",
         "Algoritma performansi olcer.",
+        "Merhaba arkadaslar nasilsiniz",
+        "Bu cumle kisa bir test icin yazildi.",
     ]
     for _ in range(n_per_type):
         n_rep = rng.randint(1, 6)
         phrase = rng.choice(short_phrases)
         samples.append(" ".join([phrase] * n_rep))
 
-    # 9. Karisik Turkce paragraflar (cesitli uzunluklarda)
+    # 9. Karisik Turkce paragraflar (cesitli uzunluklarda) — BWT icin
     turkce_paragraf = (
         "Yapay zeka teknolojileri hizla gelisiyor. Makine ogrenmesi modelleri "
         "verilerden ornek alir ve tahmin yapar. Sinir aglari karmasik desenleri "
@@ -201,6 +204,73 @@ def _synthetic_samples(n_per_type: int = 80, seed: int = 42) -> list:
     for _ in range(n_per_type):
         n_rep = rng.randint(1, 8)
         samples.append(turkce_paragraf * n_rep)
+
+    # 10. AKADEMIK metin (hocanin verecegi tipte)
+    akademik = (
+        "Veri sikistirma, bilgisayar bilimleri alanindaki temel arastirma "
+        "konularindan biridir. Kayipsiz sikistirma algoritmalari orjinal "
+        "verinin tam olarak geri kazanilmasini saglar. Bu durum ozellikle "
+        "metin dosyalari, programlar ve veritabanlari icin onem tasir. "
+        "Huffman kodlamasi 1952 yilinda Davide Huffman tarafindan "
+        "gelistirilmistir. LZW algoritmasi ise 1984 yilinda Welch tarafindan "
+        "yayimlanmistir. Burrows-Wheeler donusumu 1994 yilinda gelistirilen "
+        "modern bir yaklasimdir ve bzip2 programinin temelini olusturur. "
+    )
+    for _ in range(n_per_type):
+        n_rep = rng.randint(1, 6)
+        samples.append(akademik * n_rep)
+
+    # 11. HABER tarzi (formal Turkce)
+    haber = (
+        "Istanbul Teknik Universitesi arastirmacilari yeni bir sikistirma "
+        "algoritmasi gelistirdi. Calisma, uluslararasi bir konferansta sunuldu. "
+        "Profesor Ahmet Yilmaz konuya iliskin aciklamalar yaptı. "
+        "Yapilan testler, yeni yontemin gzip programindan yuzde otuz daha iyi "
+        "performans gosterdigini ortaya koydu. Sonuçlar yakinda dergide yayimlanacak. "
+    )
+    for _ in range(n_per_type):
+        n_rep = rng.randint(1, 5)
+        samples.append(haber * n_rep)
+
+    # 12. KOD parcalari (Python/Java tarzi)
+    kod = (
+        "def encode(text):\n    result = []\n    for ch in text:\n"
+        "        result.append(codes[ch])\n    return result\n\n"
+        "def decode(bits):\n    output = ''\n    node = root\n"
+        "    for bit in bits:\n        node = node.left if bit == '0' else node.right\n"
+        "    return output\n"
+    )
+    for _ in range(n_per_type):
+        n_rep = rng.randint(1, 4)
+        samples.append(kod * n_rep)
+
+    # 13. SIIR/EDEBI metin (farkli noktalama)
+    siir = (
+        "Sonbahar geldi yine, yapraklar dokuldu,\n"
+        "Ruzgarda salinan dallar uzuldu.\n"
+        "Mavi gokyuzunde bulutlar yarista,\n"
+        "Kuslar uzak yerlere gocmek istiyor.\n"
+    )
+    for _ in range(n_per_type):
+        n_rep = rng.randint(1, 6)
+        samples.append(siir * n_rep)
+
+    # 14. ORTA UZUNLUKTA cumle dizileri (en sik karsilasilan tip)
+    cumleler = [
+        "Bu bir ornek cumle.", "Veri yapilari onemlidir.",
+        "Algoritmalar bilgisayar biliminin temelidir.",
+        "Sinir aglari karmasik problemleri cozer.",
+        "Sikistirma orani performansi belirler.",
+        "Bilgi teorisi Shannon tarafindan gelistirilmistir.",
+        "Huffman agaci frekanslara gore olusur.",
+        "LZW sozluk tabanli calisir.",
+        "BWT permutasyon yapar.",
+        "RLE tekrarli karakterleri sayar.",
+    ]
+    for _ in range(n_per_type * 2):
+        n_c = rng.randint(3, 30)
+        text = " ".join(rng.choice(cumleler) for _ in range(n_c))
+        samples.append(text)
 
     return samples
 
