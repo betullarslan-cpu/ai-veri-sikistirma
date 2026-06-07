@@ -90,9 +90,10 @@ docker run -p 8501:8501 veri-sikistirma
 
 ### Testler
 ```bash
-pip install pytest
+# requirements.txt zaten pytest içerir
+pip install -r requirements.txt
 pytest tests/ -v
-# 72 kayıpsızlık testi çalışır
+# 86 birim test çalışır (72 kayıpsızlık + 14 ölçeklenme)
 ```
 
 ---
@@ -111,6 +112,7 @@ project_veri/
 │   ├── ai_engine.py         # Groq LLM entegrasyonu
 │   ├── entropy.py           # Shannon entropisi
 │   ├── benchmark.py         # gzip/bzip2/zlib/lzma karşılaştırması
+│   ├── ui_helpers.py        # Streamlit UI yardımcı bileşenleri
 │   ├── corpus_freq.json     # Eğitilmiş Türkçe frekansları
 │   └── nn_model.pkl         # Eğitilmiş MLP modeli
 ├── data/                    # Eğitim & test corpus'ları (6 dosya)

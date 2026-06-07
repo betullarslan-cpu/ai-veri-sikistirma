@@ -13,7 +13,7 @@
 
 ## ÖZET
 
-Bu projede, klasik veri sıkıştırma algoritmaları (Huffman, LZW, Aritmetik Kodlama, BWT) **yapay zeka** ile birleştirilerek hibrit bir sıkıştırma sistemi geliştirilmiştir. Sistem; (1) Groq LLM API'si üzerinden karakter frekans tahmini ve sözlük üretimi, (2) 3-sınıflı bir **çok katmanlı algılayıcı (MLP)** ile metin tipine göre otomatik algoritma seçimi, (3) **BWT + RLE + Huffman** (bzip2 tekniği) ile yüksek sıkıştırma oranı sağlamaktadır.
+Bu projede, klasik veri sıkıştırma algoritmaları (Huffman, LZW, BWT) **yapay zeka** ile birleştirilerek hibrit bir sıkıştırma sistemi geliştirilmiştir. Sistem; (1) Groq LLM API'si üzerinden karakter frekans tahmini ve sözlük üretimi, (2) 3-sınıflı bir **çok katmanlı algılayıcı (MLP)** ile metin tipine göre otomatik algoritma seçimi, (3) **BWT + RLE + Huffman** (bzip2 tekniği) ile yüksek sıkıştırma oranı sağlamaktadır.
 
 Eğitim verisi olarak 2.072 farklı metin örneği (sentetik + Türkçe corpus) kullanılmış; sinir ağı **5-fold cross-validation ile %91.7 ± %1.8 doğruluk** ve **hold-out test setinde %95.2 doğruluk** elde etmiştir. Tekrarlı verilerde standart Huffman'a göre **+%85.9**, doğal Türkçe metinlerde **+%2.5 - %30** iyileşme sağlanmıştır. Sistem 12 sekmeli Streamlit arayüzü ile sunulmuş ve HuggingFace Spaces üzerinden canlı olarak yayına alınmıştır.
 
@@ -29,8 +29,7 @@ Eğitim verisi olarak 2.072 farklı metin örneği (sentetik + Türkçe corpus) 
 4. Uygulanan Algoritmalar
    4.1 Huffman Kodlaması
    4.2 LZW Sıkıştırma
-   4.3 Aritmetik Kodlama
-   4.4 BWT + RLE + Huffman (bzip2 tekniği)
+   4.3 BWT + RLE + Huffman (bzip2 tekniği)
 5. Yapay Zeka Entegrasyonu
    5.1 Groq LLM ile Frekans Tahmini
    5.2 Sinir Ağı Algoritma Seçici
@@ -79,7 +78,7 @@ Klasik sıkıştırma algoritmaları (Huffman, LZW vb.) onlarca yıldır kullan�
 | 2010+ | Brotli, Zstandard | Modern hibrit algoritmalar |
 | 2020+ | Neural Compression | DeepZip, NNCP — sinir ağıyla olasılık modelleme |
 
-Bu projede klasik (Huffman, LZW, Aritmetik, BWT) ve modern (AI destekli) yöntemler birleştirilmiştir.
+Bu projede klasik (Huffman, LZW, BWT) ve modern (AI destekli) yöntemler birleştirilmiştir. Aritmetik kodlama teorik referans olarak Shannon entropi sınırının hesaplanmasında kullanılmıştır.
 
 ---
 
@@ -111,7 +110,8 @@ Bu projede klasik (Huffman, LZW, Aritmetik, BWT) ve modern (AI destekli) yöntem
 ### 3.1 Modül Listesi
 - `core/huffman.py` — Standart Huffman encode/decode
 - `core/lzw.py` — Unicode destekli LZW
-- `core/arithmetic.py` — Aritmetik kodlama + Shannon analizi
+- `core/entropy.py` — Shannon entropisi + teorik minimum hesaplama
+- `core/ui_helpers.py` — Streamlit UI yardımcı bileşenleri
 - `core/bwt.py` — Burrows-Wheeler dönüşümü + RLE
 - `core/nn_selector.py` — 3-sınıflı MLP (Huffman/LZW/BWT)
 - `core/hybrid.py` — Akıllı Hibrit + Corpus Huffman
@@ -143,17 +143,7 @@ Tekrarlayan dizileri sözlükte kodlarla temsil eden adaptif algoritma. Standart
 
 **AI iyileştirmesi:** Groq'tan metne özgü 60 en sık kelime/ifade istenir, bunlar başlangıç sözlüğüne eklenir → daha erken pattern eşleşmesi.
 
-### 4.3 Aritmetik Kodlama
-
-Her sembolü tam bit yerine **kesirli bit** sayısıyla temsil eder → Shannon teorik sınırına çok yakın sıkıştırma.
-
-```
-bits = -Σ log₂(p(xᵢ))
-```
-
-**AI iyileştirmesi:** Olasılık modeli Groq'tan alınır → tablo gönderme overhead'i ortadan kalkar.
-
-### 4.4 BWT + RLE + Huffman (bzip2 tekniği)
+### 4.3 BWT + RLE + Huffman (bzip2 tekniği)
 
 **En güçlü algoritma:**
 
@@ -377,7 +367,7 @@ project_veri/
 ├── core/
 │   ├── huffman.py            # Klasik Huffman
 │   ├── lzw.py                # LZW (Unicode)
-│   ├── arithmetic.py         # Aritmetik + AI
+│   ├── benchmark.py          # gzip/bzip2/zlib/lzma karşılaştırma
 │   ├── bwt.py                # BWT + RLE + Huffman
 │   ├── nn_selector.py        # MLP (3-sınıf)
 │   ├── hybrid.py             # Akıllı Hibrit

@@ -42,12 +42,22 @@ st.caption(
 
 # ─── Sidebar: API key + ayarlar ────────────────────
 with st.sidebar:
-    api_key = st.text_input("Groq API Key", type="password",
-                            value=os.environ.get("GROQ_API_KEY", ""),
-                            help="Sadece AI içeren sekmeler için gerekli. "
-                                 "console.groq.com → API Keys (ücretsiz)")
+    # Güvenlik: API key arayüzde GÖRÜNMEZ. value="" ile her açılışta boş.
+    # Kullanıcı kendisi yapıştırır, env var'a yansır.
+    # Demo/sunum ekran görüntüsünde key sızmaz.
+    api_key = st.text_input(
+        "Groq API Key", type="password",
+        value="",  # ← her oturumda boş başlar, ekran görüntüsünde key görünmez
+        help="Sadece AI içeren sekmeler için gerekli. "
+             "console.groq.com → API Keys (ücretsiz). "
+             "Bu alan güvenlik için boş başlar — her oturumda yeniden girin.",
+        placeholder="gsk_...",
+    )
     if api_key:
         os.environ["GROQ_API_KEY"] = api_key
+    elif os.environ.get("GROQ_API_KEY"):
+        # Env var dış kaynaktan geliyorsa kullan, ama sidebar'a yansıtma
+        api_key = os.environ.get("GROQ_API_KEY")
 
     text_type = st.selectbox("Metin türü", ["Türkçe metin", "İngilizce metin", "Kod (Python)"])
 
@@ -82,71 +92,18 @@ if len(text) < 10:
     st.warning("En az 10 karakter girin.")
     st.stop()
 
-
-# ─── Yardımcı: Sıkıştırılmış çıktıyı ekrana göster ───
-def goster_sikistirma_ciktisi(algoritma_adi: str, bit_string: str,
-                               byte_data: bytes, orig_byte: int,
-                               key_suffix: str = ""):
-    """
-    Sıkıştırılmış çıktıyı 4 farklı görünümle ekranda gösterir:
-    1) Binary (ilk 320 bit)
-    2) Hexadecimal (ilk 80 byte)
-    3) Boyut karşılaştırması
-    4) Download butonu
-    """
-    if not bit_string:
-        return
-    total_bits = len(bit_string)
-    bin_size   = len(byte_data)
-    kucullme   = (1 - bin_size/orig_byte) * 100 if orig_byte else 0
-
-    st.markdown(f"### 💾 Sıkıştırılmış Çıktı — *{algoritma_adi}*")
-
-    # Boyut karşılaştırma metrikleri
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Orijinal (text)", f"{orig_byte:,} byte")
-    c2.metric("Sıkışmış (binary)", f"{bin_size:,} byte",
-              delta=f"-%{kucullme:.1f}", delta_color="off")
-    c3.metric("Toplam bit", f"{total_bits:,}")
-    c4.metric("Karakter başı", f"{total_bits/orig_byte if orig_byte else 0:.2f} bit",
-              help="Standart 8 bit/karaktere göre kıyas")
-
-    # 2 sütun: binary + hex
-    cb, ch = st.columns(2)
-    with cb:
-        st.markdown("**🔢 Binary (ilk 320 bit)**")
-        preview = bit_string[:320]
-        # 8'erli grupla
-        formatted = " ".join(preview[i:i+8] for i in range(0, len(preview), 8))
-        st.code(formatted + ("..." if total_bits > 320 else ""), language=None)
-
-    with ch:
-        st.markdown("**🔣 Hexadecimal (ilk 80 byte)**")
-        hex_preview = byte_data[:80].hex(" ").upper()
-        # 16'lı grupla (her satırda 16 byte = 48 char + 15 boşluk = 47 char)
-        lines = []
-        hb = byte_data[:80].hex().upper()
-        for i in range(0, len(hb), 32):
-            chunk = hb[i:i+32]
-            line = " ".join(chunk[j:j+2] for j in range(0, len(chunk), 2))
-            lines.append(line)
-        st.code("\n".join(lines) + ("\n..." if bin_size > 80 else ""), language=None)
-
-    # Tam binary expander (uzun metin için)
-    if total_bits > 320:
-        with st.expander(f"📜 Tam binary dizisini göster ({total_bits:,} bit)"):
-            # 64 bitlik bloklar halinde
-            blocks = [bit_string[i:i+64] for i in range(0, len(bit_string), 64)]
-            st.code("\n".join(blocks[:50]) + ("\n... (kalanı indir)" if len(blocks) > 50 else ""))
-
-    # Download butonu
-    st.download_button(
-        f"⬇ {algoritma_adi} sıkıştırılmış (.bin) — {bin_size:,} byte",
-        data=byte_data,
-        file_name=f"sikistirilmis_{key_suffix}.bin",
-        mime="application/octet-stream",
-        key=f"dl_{key_suffix}",
+# BWT sınırı uyarısı (uzun metinlerde)
+if len(text) > 8000:
+    st.info(
+        f"ℹ️ **Bilgi:** Metniniz {len(text):,} karakter. "
+        f"BWT modülümüz performans için ilk **8.000 karakterle** sınırlıdır "
+        f"(suffix array O(n²) — bu eğitim implementasyonunun sınırı). "
+        f"Gerçek bzip2 blok blok işler. Huffman/LZW tüm metinde çalışır."
     )
+
+
+# UI yardımcı fonksiyonu artık core/ui_helpers.py'da
+from core.ui_helpers import goster_sikistirma_ciktisi
 
 
 # ─── Sekmeler — sadece gerekli olanlar ──────

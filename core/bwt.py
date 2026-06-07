@@ -57,7 +57,10 @@ from collections import Counter
 # BWT sonu işaretçisi — metinde bulunmayan özel karakter
 EOF_CHAR = "\x00"
 
-MAX_BWT_LEN = 8000  # Performans için üst sınır (O(n²))
+MAX_BWT_LEN = 8000  # Performans için üst sınır (O(n²) suffix array)
+# NOT: 8000 karakterin üstündeki metinler BLOK BLOK BWT yapılarak işlenir.
+# Bu uygulama tek blokla sınırlı (basit eğitim implementasyonu).
+# Gerçek bzip2 9 farklı blok boyutu (100K-900K) destekler.
 
 
 # ─────────────────────────────────────────────────────
