@@ -625,22 +625,43 @@ $$I(c) = -\\log_2 p(c) \\quad \\text{[bit]}$$
 Aşağıda **her karakterin gerçek bilgi miktarı** ve Huffman'ın atadığı kod uzunluğu:
                         """)
                         rows_info = []
+                        toplam_info = 0.0
+                        toplam_kod = 0
                         for ch, freq in sorted(actual_freq.items(), key=lambda x: -x[1])[:12]:
                             info_bits = -math.log2(freq) if freq > 0 else 0
                             code_len = len(codes.get(ch, ""))
-                            verim = (info_bits / code_len * 100) if code_len else 0
+                            fark = code_len - info_bits  # + = Huffman fazla bit atadı
+                            if fark > 0.1:
+                                durum = f"🟡 {fark:+.2f} bit israfı"
+                            elif fark < -0.1:
+                                durum = f"🟢 {fark:+.2f} bit kazancı"
+                            else:
+                                durum = "✅ optimal"
                             rows_info.append({
                                 "Karakter": repr(ch),
                                 "Olasılık p(c)": f"{freq:.4f}",
-                                "Information -log₂(p)": f"{info_bits:.2f} bit",
-                                "Huffman kod uzunluğu": f"{code_len} bit",
-                                "Verimlilik": f"%{verim:.0f}",
+                                "Teorik bilgi -log₂(p)": f"{info_bits:.2f} bit",
+                                "Huffman kodu": f"{code_len} bit",
+                                "Fark": durum,
                             })
+                            # Toplam: tüm karakterler için ağırlıklı
+                        # Genel verimlilik (tüm metin)
+                        total_info_all = sum(-cnt * math.log2(cnt/total_chars)
+                                             for cnt in Counter(text).values()
+                                             if cnt > 0)
+                        total_huff_bits = sum(len(codes.get(c, ""))
+                                              for c in text)
+                        genel_verim = total_info_all / total_huff_bits * 100 if total_huff_bits else 0
+
                         st.dataframe(rows_info, use_container_width=True, hide_index=True)
-                        st.caption(
-                            "📊 **Verimlilik %100'e ne kadar yakınsa, Huffman o kadar optimal.** "
-                            "Information **kesirli bit** verebilir (örn. 2.7 bit), Huffman ise "
-                            "her zaman **tam bit** atar — bu kayıp gerçek limit ile fark yaratır."
+                        st.info(
+                            f"📊 **Genel sıkıştırma verimliliği: %{genel_verim:.1f}** "
+                            f"(Shannon entropi {total_info_all:.0f} bit / "
+                            f"Huffman {total_huff_bits:,} bit). "
+                            f"**%100 = teorik mükemmel** (Cover & Thomas §5.6). "
+                            f"Huffman her zaman tam bit kullandığı için kesirli bit ihtiyaçlarında "
+                            f"karakter bazlı bazen kazanç (🟢), bazen israf (🟡) olur — "
+                            f"ortalama Shannon limitine yakınsar."
                         )
 
                     # Günlüğe kaydet
