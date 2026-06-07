@@ -15,7 +15,7 @@
 
 Bu projede, klasik veri sıkıştırma algoritmaları (Huffman, LZW, BWT) **yapay zeka** ile birleştirilerek hibrit bir sıkıştırma sistemi geliştirilmiştir. Sistem; (1) Groq LLM API'si üzerinden karakter frekans tahmini ve sözlük üretimi, (2) 3-sınıflı bir **çok katmanlı algılayıcı (MLP)** ile metin tipine göre otomatik algoritma seçimi, (3) **BWT + RLE + Huffman** (bzip2 tekniği) ile yüksek sıkıştırma oranı sağlamaktadır.
 
-Eğitim verisi olarak 2.072 farklı metin örneği (sentetik + Türkçe corpus) kullanılmış; sinir ağı **5-fold cross-validation ile %91.7 ± %1.8 doğruluk** ve **hold-out test setinde %95.2 doğruluk** elde etmiştir. Tekrarlı verilerde standart Huffman'a göre **+%85.9**, doğal Türkçe metinlerde **+%2.5 - %30** iyileşme sağlanmıştır. Sistem 12 sekmeli Streamlit arayüzü ile sunulmuş ve HuggingFace Spaces üzerinden canlı olarak yayına alınmıştır.
+Eğitim verisi olarak 2.072 farklı metin örneği (sentetik + Türkçe corpus) kullanılmış; sinir ağı **5-fold cross-validation ile %91.7 ± %1.8 doğruluk** ve **hold-out test setinde %95.2 doğruluk** elde etmiştir. Tekrarlı verilerde standart Huffman'a göre **+%85.9**, doğal Türkçe metinlerde **+%2.5 - %30** iyileşme sağlanmıştır. Sistem 8 sekmeli Streamlit arayüzü ile sunulmuş ve HuggingFace Spaces üzerinden canlı olarak yayına alınmıştır.
 
 **Anahtar Kelimeler:** Veri Sıkıştırma, Huffman, LZW, Burrows-Wheeler Dönüşümü, Yapay Sinir Ağı, Büyük Dil Modelleri, Türkçe Metin
 
@@ -61,7 +61,7 @@ Klasik sıkıştırma algoritmaları (Huffman, LZW vb.) onlarca yıldır kullan�
 - 5 algoritma + 1 hibrit (Akıllı Hibrit) içeren entegre sistem
 - 3-sınıflı MLP (Huffman/LZW/BWT) — 5-fold CV ile gerçek genelleme garantisi
 - Türkçe karakter desteği (Unicode LZW + Türkçe corpus eğitimi)
-- 12 sekmeli interaktif Streamlit arayüzü
+- 8 sekmeli interaktif Streamlit arayüzü
 - HuggingFace Spaces canlı deployment
 
 ---
@@ -87,7 +87,8 @@ Bu projede klasik (Huffman, LZW, BWT) ve modern (AI destekli) yöntemler birleş
 ```
 ┌─────────────────────────────────────────────────────┐
 │                  Streamlit Arayüzü                  │
-│  (12 sekme — Hızlı Özet, Huffman, LZW, NN, Hibrit)  │
+│  (8 sekme — Hızlı Özet, Huffman, LZW, NN, Hibrit,    │
+│   Shannon, BWT, AI Günlüğü)                         │
 └───────┬──────────────┬──────────────┬───────────────┘
         │              │              │
    ┌────▼────┐    ┌────▼────┐    ┌───▼─────┐
@@ -363,7 +364,7 @@ Proje, GitHub'da açık kaynak olarak yayınlanmış ve HuggingFace Spaces üzer
 
 ```
 project_veri/
-├── app.py                    # Streamlit arayüzü (12 sekme)
+├── app.py                    # Streamlit arayüzü (8 sekme)
 ├── core/
 │   ├── huffman.py            # Klasik Huffman
 │   ├── lzw.py                # LZW (Unicode)

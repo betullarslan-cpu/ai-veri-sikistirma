@@ -186,7 +186,7 @@ https://github.com/betullarslan-cpu/ai-veri-sikistirma
 - tests/          → 86 birim test
 
 ✅ HAZIR ÖZELLİKLER:
-- 5 algoritma (Huffman, LZW, Aritmetik, BWT, Akıllı Hibrit)
+- 5 algoritma (Huffman, LZW, BWT+RLE+Huffman, Corpus Huffman, Akıllı Hibrit)
 - Sinir ağı %95.2 doğruluk (5-fold CV %91.7)
 - gzip/bzip2 ile karşılaştırma
 - Türkçe karakter desteği

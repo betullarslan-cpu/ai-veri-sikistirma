@@ -93,13 +93,13 @@ if len(text) < 10:
     st.warning("En az 10 karakter girin.")
     st.stop()
 
-# BWT sınırı uyarısı (uzun metinlerde)
+# BWT bloklu bilgilendirme (uzun metinde otomatik blok blok işler)
 if len(text) > 8000:
+    n_block = (len(text) + 7999) // 8000
     st.info(
-        f"ℹ️ **Bilgi:** Metniniz {len(text):,} karakter. "
-        f"BWT modülümüz performans için ilk **8.000 karakterle** sınırlıdır "
-        f"(suffix array O(n²) — bu eğitim implementasyonunun sınırı). "
-        f"Gerçek bzip2 blok blok işler. Huffman/LZW tüm metinde çalışır."
+        f"ℹ️ Metniniz **{len(text):,} karakter**. BWT modülümüz "
+        f"**{n_block} blok** halinde işliyor (her blok 8.000 karakter, bzip2 mantığı). "
+        f"Kayıpsız geri alma TÜM metin için garantilidir."
     )
 
 
@@ -1328,6 +1328,14 @@ with tab11:
     st.markdown("### 🔓 Açma (Decompression) — Adım Adım Kayıpsızlık Kanıtı")
     st.caption("BWT'nin geri çevrimi (LF mapping) — en zarif veri yapısı işlemlerinden biri.")
 
+    # Bloklu mod bilgisi
+    _n_chunks = _bwt_enc.get('n_chunks', 1)
+    if _n_chunks > 1:
+        st.success(
+            f"📦 Bu metin **{_n_chunks} bloğa** bölündü ve her blok ayrı BWT işledi. "
+            f"Aşağıda ilk bloğun detayları gösteriliyor — tüm bloklar kayıpsız geri alınır."
+        )
+
     _bwt_str = _bwt_enc['bwt']
     _orig_idx = _bwt_enc['orig_idx']
 
@@ -1406,14 +1414,20 @@ with tab11:
             "n iterasyonda metni terste kurar, en sonda ters çevir → orijinal!"
         )
 
-    _bwt_decoded = _bwt_dec(_bwt_str, _orig_idx)
+    # Decode: bloklu modda tüm blokları aç, tek bloksa eski yöntem
+    if _n_chunks > 1:
+        from core.bwt import bwt_chunked_decode as _bwt_chunk_dec
+        _bwt_decoded = _bwt_chunk_dec(_bwt_enc['chunks'])
+    else:
+        _bwt_decoded = _bwt_dec(_bwt_str, _orig_idx)
 
     with st.expander("🔍 **Aşama 6 — Decode edilmiş ham metin**", expanded=False):
         st.code(_bwt_decoded[:400] + ("..." if len(_bwt_decoded) > 400 else ""), language=None)
-        st.caption(f"Toplam **{len(_bwt_decoded):,}** karakter geri kurtarıldı.")
+        st.caption(f"Toplam **{len(_bwt_decoded):,}** karakter geri kurtarıldı "
+                   f"({_n_chunks} blok birleştirildi).")
 
     st.markdown("#### ✅ Aşama 7 — Doğrulama: Orijinal == Decode")
-    _bwt_kayipsiz = (_bwt_decoded == text[:len(_bwt_decoded)])
+    _bwt_kayipsiz = (_bwt_decoded == text)
 
     cd_b1, cd_b2 = st.columns(2)
     with cd_b1:

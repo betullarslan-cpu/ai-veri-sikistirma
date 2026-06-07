@@ -160,6 +160,32 @@ def test_bwt_full_pipeline_dondurulebilir():
     assert decoded == metin
 
 
+def test_bwt_uzun_metin_blokla_kayipsiz():
+    """BWT 8000 karakter üstü metinleri BLOKLU işler, kayıpsız geri verir."""
+    from core.bwt import bwt_chunked_encode, bwt_chunked_decode
+    metin = "Veri sikistirma algoritmasi cok onemlidir. " * 200  # ~8600 char
+    assert len(metin) > 8000, "Test metin yetersiz"
+
+    chunks = bwt_chunked_encode(metin)
+    assert len(chunks) >= 2, "Birden fazla blok olmalı"
+
+    decoded = bwt_chunked_decode(chunks)
+    assert decoded == metin, "Bloklu BWT decode kayıplı!"
+
+
+def test_bwt_rle_huffman_uzun_metin_kayipsiz():
+    """bwt_rle_huffman_encode uzun metinde otomatik bloklu çalışır."""
+    from core.bwt import bwt_chunked_decode
+    metin = "Yapay zeka ile veri sikistirma. " * 300  # ~9000 char
+    assert len(metin) > 8000
+
+    out = bwt_rle_huffman_encode(metin)
+    assert out["n_chunks"] >= 2, "n_chunks bilgisi gelmeli"
+
+    decoded = bwt_chunked_decode(out["chunks"])
+    assert decoded == metin
+
+
 # ─────────────────────────────────────────
 # CROSS-ALGORITHM (Tüm algoritmalar aynı metni doğru sıkıştırmalı)
 # ─────────────────────────────────────────

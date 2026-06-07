@@ -109,8 +109,8 @@ Türkçe Wikipedia metni (4.516 karakter):
 
 # ✅ Kanıtlar (Eleştirelliğe Dayanıklı)
 
-- **72 unit testi** — kayıpsızlık her senaryoda doğrulandı
-- **GitHub Actions CI** — her commit'te otomatik test
+- **86 unit testi** — kayıpsızlık her senaryoda doğrulandı (pytest)
+- **Bloklu BWT** — uzun metin kayıpsız (bzip2 mantığı)
 - **Permutation importance** — NN'in hangi özelliği kullandığı şeffaf
 - **gzip/bzip2 benchmark** — endüstri standardı karşılaştırma
 - **Türkçe karakter** desteği (ş, ğ, ü, ö, ç, ı)

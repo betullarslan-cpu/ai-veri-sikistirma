@@ -57,10 +57,11 @@ from collections import Counter
 # BWT sonu işaretçisi — metinde bulunmayan özel karakter
 EOF_CHAR = "\x00"
 
-MAX_BWT_LEN = 8000  # Performans için üst sınır (O(n²) suffix array)
-# NOT: 8000 karakterin üstündeki metinler BLOK BLOK BWT yapılarak işlenir.
-# Bu uygulama tek blokla sınırlı (basit eğitim implementasyonu).
-# Gerçek bzip2 9 farklı blok boyutu (100K-900K) destekler.
+MAX_BWT_LEN = 8000  # Tek blok için üst sınır (O(n²) suffix array)
+# 8000 karakterin üstündeki metinler bwt_chunked_encode/decode ile
+# BLOK BLOK işlenir (gerçek bzip2 mantığı: blok blok BWT → birleştirme).
+# Bu sayede sınırsız uzunlukta metin kayıpsız sıkıştırılabilir.
+BLOCK_BOUNDARY = "\x01"  # Blokları ayırmak için kullanılan özel karakter
 
 
 # ─────────────────────────────────────────────────────
@@ -127,6 +128,41 @@ def bwt_decode(bwt: str, orig_idx: int) -> str:
     result.reverse()
     # EOF isaretsini cikar
     return "".join(ch for ch in result if ch != EOF_CHAR)
+
+
+# ─────────────────────────────────────────────────────
+# 1b. BLOKLU BWT (gerçek bzip2 mantığı)
+# ─────────────────────────────────────────────────────
+
+def bwt_chunked_encode(text: str, block_size: int = MAX_BWT_LEN) -> list:
+    """
+    Metni block_size karakterlik bloklara böl, her bloga BWT uygula.
+
+    Bu, gercek bzip2'nin yaptigi seydir:
+        - bzip2 100K-900K arasinda 9 blok boyutunu destekler
+        - Biz demo icin 8000 karakter kullaniyoruz (O(n^2) limiti)
+
+    Returns:
+        Her eleman bir blok icin (bwt_string, orig_idx) tuple'i.
+    """
+    if not text:
+        return []
+    chunks = []
+    for i in range(0, len(text), block_size):
+        chunk = text[i:i + block_size]
+        bwt, idx = bwt_encode(chunk)
+        chunks.append((bwt, idx))
+    return chunks
+
+
+def bwt_chunked_decode(chunks: list) -> str:
+    """
+    Bloklu BWT'yi geri ac - her bloğu ayrı çöz, birlestir.
+
+    bwt_chunked_encode'un tam tersi.
+    Metnin tamami kayipsiz geri alinir (uzunluk siniri YOK).
+    """
+    return "".join(bwt_decode(bwt, idx) for bwt, idx in chunks)
 
 
 # ─────────────────────────────────────────────────────
@@ -221,21 +257,8 @@ def bwt_huffman_bits(text: str) -> int:
     return compressed + overhead
 
 
-def bwt_rle_huffman_encode(text: str) -> dict:
-    """
-    BWT + RLE + Huffman ile GERCEK encode edilmis cikti dondurur.
-
-    Returns:
-        {
-            "bit_string": "01001011...",  # ham bit dizisi
-            "byte_data":  bytes(...),     # 8-bit paketli binary
-            "bwt":        "permute...",
-            "orig_idx":   int,
-            "runs":       [(ch, count), ...],
-            "codes":      {ch: "010"},
-            "total_bits": int,
-        }
-    """
+def _bwt_rle_huffman_encode_single(text: str) -> dict:
+    """Tek blok için BWT+RLE+Huffman encode (yardımcı)."""
     bwt, orig_idx = bwt_encode(text)
     if not bwt:
         return {"bit_string": "", "byte_data": b"", "total_bits": 0,
@@ -260,8 +283,6 @@ def bwt_rle_huffman_encode(text: str) -> dict:
             bit_parts.append("0" * n + "1" + bin(count)[2:][1:])
 
     bit_string = "".join(bit_parts)
-
-    # 8-bit paketle (binary cikti)
     padded = bit_string + "0" * ((8 - len(bit_string) % 8) % 8)
     byte_data = bytes(int(padded[i:i+8], 2) for i in range(0, len(padded), 8))
 
@@ -273,6 +294,70 @@ def bwt_rle_huffman_encode(text: str) -> dict:
         "runs":       runs,
         "codes":      codes,
         "total_bits": len(bit_string),
+    }
+
+
+def bwt_rle_huffman_encode(text: str) -> dict:
+    """
+    BWT + RLE + Huffman ile GERCEK encode edilmis cikti dondurur.
+
+    KAYIPSIZ TUM METIN GARANTILI: 8000 karakterden uzun metinler otomatik
+    olarak bloklara bolunup her bloga ayri BWT uygulanir (bzip2 mantigi).
+    UI gosterimi icin ilk bloğun bilgileri ana alanlara konur.
+
+    Returns:
+        {
+            "bit_string": "01001011...",  # tüm bloklar birleşmiş bit
+            "byte_data":  bytes(...),     # 8-bit paketli binary
+            "bwt":        "permute...",   # 1. blok BWT (gösterim)
+            "orig_idx":   int,            # 1. blok indeksi
+            "runs":       [...],          # 1. blok RLE
+            "codes":      {...},          # 1. blok Huffman
+            "total_bits": int,
+            "n_chunks":   int,            # toplam blok sayısı
+            "chunks":     [...],          # her blok için (bwt, idx)
+        }
+    """
+    if not text:
+        return {"bit_string": "", "byte_data": b"", "total_bits": 0,
+                "bwt": "", "orig_idx": 0, "runs": [], "codes": {},
+                "n_chunks": 0, "chunks": []}
+
+    # Tek bloka sığarsa eski davranış
+    if len(text) <= MAX_BWT_LEN:
+        result = _bwt_rle_huffman_encode_single(text)
+        result["n_chunks"] = 1
+        result["chunks"] = [(result["bwt"], result["orig_idx"])]
+        return result
+
+    # Bloklu encode (uzun metin)
+    chunks_meta = []   # (bwt, orig_idx) çiftleri — decode için
+    all_bits = []
+    first_block_data = None
+
+    for i in range(0, len(text), MAX_BWT_LEN):
+        chunk = text[i:i + MAX_BWT_LEN]
+        block_out = _bwt_rle_huffman_encode_single(chunk)
+        all_bits.append(block_out["bit_string"])
+        chunks_meta.append((block_out["bwt"], block_out["orig_idx"]))
+        # İlk bloğun detayları UI gösterimi için
+        if first_block_data is None:
+            first_block_data = block_out
+
+    bit_string = "".join(all_bits)
+    padded = bit_string + "0" * ((8 - len(bit_string) % 8) % 8)
+    byte_data = bytes(int(padded[i:i+8], 2) for i in range(0, len(padded), 8))
+
+    return {
+        "bit_string": bit_string,
+        "byte_data":  byte_data,
+        "bwt":        first_block_data["bwt"],          # ilk blok (UI için)
+        "orig_idx":   first_block_data["orig_idx"],     # ilk blok
+        "runs":       first_block_data["runs"],         # ilk blok
+        "codes":      first_block_data["codes"],        # ilk blok
+        "total_bits": len(bit_string),
+        "n_chunks":   len(chunks_meta),
+        "chunks":     chunks_meta,
     }
 
 
