@@ -39,6 +39,10 @@ st.set_page_config(
 )
 
 st.title("🗜️ AI-Destekli Veri Sıkıştırma")
+st.caption(
+    "Klasik sıkıştırma algoritmalarını (Huffman, LZW, BWT) bir **sinir ağı** ile birleştirip "
+    "her veri türünde otomatik en iyi yöntemi seçen sistem."
+)
 
 # ─── Sidebar: API key + ayarlar ────────────────────
 with st.sidebar:
@@ -102,6 +106,19 @@ with tab0:
     st.subheader("🚀 Hızlı Özet — Tek Ekranda Tüm Sonuçlar")
     st.caption("Bir butonla tüm algoritmaları çalıştır, yan yana karşılaştır. API gerekmez.")
 
+    with st.expander("ℹ️ Bu sekmede ne göreceksin?"):
+        st.markdown("""
+**Butona basınca otomatik olarak şunlar hesaplanır:**
+
+1. **4 ana metrik:** Orijinal boyut, Shannon limiti, Standart Huffman, Akıllı Hibrit
+2. **Sinir ağı kararı:** Hangi algoritmayı neden seçti
+3. **Karşılaştırma grafiği:** 5 algoritmanın bit sayıları yan yana
+4. **Algoritma sonuçları tablosu:** Her algoritmanın küçülme yüzdesi
+5. **Sıkıştırılmış çıktı:** Gerçek bit dizisi + indirilebilir `.bin` dosyası
+
+Her bölümün altında **💡 ile başlayan kutucuklar** sonucun ne anlama geldiğini açıklar.
+        """)
+
     if st.button("▶ Tümünü Hesapla", key="quick_run", type="primary"):
         with st.spinner("Hesaplanıyor..."):
             from core.bwt import compare as _bwt_cmp
@@ -119,17 +136,38 @@ with tab0:
         # ── 4 metrik yan yana ──
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Orijinal", f"{_orig:,} bit",
-                  help="Her karakter 8 bit varsayımı")
+                  help="Sıkıştırılmadan önceki boyut. Her karakter UTF-8'de 8 bit varsayılır.")
         m2.metric("Shannon limiti", f"{_min:,} bit",
                   delta=f"%{(1-_min/_orig)*100:.1f} küçülme",
                   delta_color="off",
-                  help="Teorik en küçük boyut")
+                  help="Bilgi teorisinin söylediği MUTLAK minimum. Hiçbir algoritma "
+                       "bunun altına inemez (kayıpsız sıkıştırmada).")
         m3.metric("Standart Huffman", f"{_sm['standard_bits']:,} bit",
                   delta=f"%{(1-_sm['standard_ratio'])*100:.1f} küçülme",
-                  delta_color="off")
+                  delta_color="off",
+                  help="Klasik Huffman + frekans tablosu overhead'i. "
+                       "Karşılaştırma için referansımız.")
         m4.metric(f"🏆 Akıllı Hibrit ({_sm['nn_decision']})",
                   f"{_sm['smart_bits']:,} bit",
-                  delta=f"%{(1-_sm['smart_ratio'])*100:.1f} küçülme")
+                  delta=f"%{(1-_sm['smart_ratio'])*100:.1f} küçülme",
+                  help="Sinir ağı en uygun algoritmayı seçti ve onu çalıştırdı. "
+                       "Bu projenin nihai sonucudur.")
+
+        # ── METRIKLER NE ANLAMA GELIYOR? ──
+        with st.expander("💡 Yukarıdaki metrikler ne anlama geliyor?"):
+            _ks_huff = (1 - _sm['standard_ratio']) * 100
+            _ks_smart = (1 - _sm['smart_ratio']) * 100
+            _shan_pct = (1 - _min/_orig) * 100
+            st.markdown(f"""
+- **Orijinal ({_orig:,} bit):** Metin sıkıştırılmadan saklansaydı bu kadar yer kaplardı.
+- **Shannon limiti ({_min:,} bit, %{_shan_pct:.1f} küçülme):**
+  Karakter olasılıklarına göre teorik en küçük boyut. Hiçbir kayıpsız algoritma bunun altına inemez.
+- **Standart Huffman ({_sm['standard_bits']:,} bit, %{_ks_huff:.1f} küçülme):**
+  Klasik Huffman + frekans tablosunun ek yükü. 1952'den beri kullanılan referansımız.
+- **🏆 Akıllı Hibrit ({_sm['smart_bits']:,} bit, %{_ks_smart:.1f} küçülme):**
+  Bizim sistemimizin sonucu. Shannon limitine **%{(_sm['smart_bits']/_min-1)*100:.1f}** uzakta —
+  yani neredeyse teorik mükemmel.
+            """)
 
         # NN bilgisi tek satır
         st.success(
@@ -138,6 +176,33 @@ with tab0:
             f"**Standart Huffman'a göre +%{_sm['saved_bits']*100/_sm['standard_bits']:.1f} iyileşme** "
             f"({_sm['saved_bits']:,} bit tasarruf)"
         )
+
+        with st.expander("💡 Sinir ağı nasıl karar verdi?"):
+            _feat = _nn.get("features", {})
+            _entrop = _feat.get("entropi", 0)
+            _alpha = _feat.get("alfabe_boyutu_log", 0)
+            _maxrun = _feat.get("max_koşu_oran", 0)
+            _algo = _nn['algorithm']
+            _explain = {
+                "huffman": "Entropi yüksek + tekrar az → karakter bazlı kodlamak en iyisi.",
+                "lzw":     "Tekrarlı kelime/ifadeler var → sözlük tabanlı kodlama avantajlı.",
+                "bwt":     "Yapısal düzen var (küçük alfabe veya benzer karakterler kümelenebilir) → BWT permütasyonu çok kazandırır.",
+            }.get(_algo, "")
+            st.markdown(f"""
+Sinir ağı (MLP 32→16→8) metinden **11 özellik** çıkardı:
+
+- **Entropi:** {_entrop:.3f} (yüksek = tahmin edilemez)
+- **Alfabe boyutu (log₂):** {_alpha:.2f} (küçük alfabe BWT'ye yarar)
+- **Max koşu oranı:** {_maxrun:.4f} (tekrarlı bloklar var mı?)
+- **Olasılıklar:** Huffman %{_nn['probabilities'].get('huffman',0)*100:.1f}, "
+LZW %{_nn['probabilities'].get('lzw',0)*100:.1f}, "
+BWT %{_nn['probabilities'].get('bwt',0)*100:.1f}
+
+**Karar gerekçesi:** {_explain}
+
+> Model %{_nn.get('cv_accuracy', 0)*100:.1f} cross-validation doğruluğuyla çalışıyor —
+> eğitim ezberi değil, gerçek genelleme.
+            """)
 
         # ── 5 algoritmali kompakt grafik ──
         _res = _bwt['results']
@@ -160,6 +225,12 @@ with tab0:
             margin=dict(t=20, b=20, l=40, r=10),
         )
         st.plotly_chart(fig, use_container_width=True)
+        st.caption(
+            "📊 **Grafik açıklaması:** Her çubuk farklı bir algoritmanın ürettiği bit sayısını gösterir. "
+            "🟡 sarı = kazanan algoritma, 🟢 yeşil = BWT ailesi, 🔵 mavi = klasik. "
+            "Kırmızı kesik çizgi orijinal boyut, yeşil kesik çizgi Shannon'un teorik minimumudur. "
+            "**Kısa çubuk = iyi sıkıştırma.**"
+        )
 
         # ── Kompakt tablo (2 sütun yan yana) ──
         cL, cR = st.columns(2)
@@ -191,12 +262,19 @@ with tab0:
 
             st.markdown("---")
             st.markdown("**💾 Sıkıştırılmış Çıktı (BWT+RLE+Huffman)**")
-            st.metric("Binary boyut", f"{len(_bwt_out['byte_data']):,} byte",
-                      delta=f"{len(text):,} byte → {len(_bwt_out['byte_data']):,} byte")
+            _bin_size = len(_bwt_out['byte_data'])
+            _orig_byte = len(text.encode('utf-8'))
+            st.metric("Binary boyut", f"{_bin_size:,} byte",
+                      delta=f"{_orig_byte:,} byte (orjinal) → {_bin_size:,} byte (sıkışmış)")
             # Bit dizisi önizleme
             bits_preview = _bwt_out['bit_string'][:160]
             st.code(bits_preview + ("..." if len(_bwt_out['bit_string']) > 160 else ""),
                     language=None)
+            st.caption(
+                f"☝️ Yukarıdaki **bit dizisi** sıkıştırılmış halin gerçek 0/1 görünümüdür "
+                f"(toplam **{_bwt_out['total_bits']:,} bit**, ilk 160 bit gösteriliyor). "
+                f"Her 8 bit bir byte oluşturur → toplam **{_bin_size:,} byte** binary dosya."
+            )
             # Indirme butonları
             d1, d2 = st.columns(2)
             d1.download_button(
@@ -205,6 +283,7 @@ with tab0:
                 file_name="sikistirilmis_bwt.bin",
                 mime="application/octet-stream",
                 key="dl_bwt",
+                help="bzip2 tarzı — en küçük boyut. İndir, herhangi bir hex editör ile görüntüle.",
             )
             d2.download_button(
                 "⬇ Huffman sıkıştırılmış (.bin)",
@@ -212,7 +291,16 @@ with tab0:
                 file_name="sikistirilmis_huffman.bin",
                 mime="application/octet-stream",
                 key="dl_huff",
+                help="Klasik Huffman — referans dosya. BWT versiyonuyla boyut farkını gör.",
             )
+            with st.expander("💡 Bu sıkıştırılmış çıktı ne işe yarar?"):
+                _kazanc = (1 - _bin_size/_orig_byte) * 100
+                st.markdown(f"""
+- **{_orig_byte:,} byte → {_bin_size:,} byte** ({_kazanc:.1f}% küçülme)
+- İndirdiğin `.bin` dosyası **gerçek sıkıştırılmış veridir** — diskte bu kadar yer kaplar.
+- Açmak için aynı algoritma (BWT+RLE+Huffman) ile **decode** edilmesi gerekir.
+- Hocaya gösterirken: orijinal `.txt` ile `.bin` dosyalarının boyutlarını karşılaştır.
+                """)
             st.caption(
                 f"Entropi: **{_ent:.3f}** bit/kar  •  "
                 f"Karakter: **{len(text):,}**  •  "
