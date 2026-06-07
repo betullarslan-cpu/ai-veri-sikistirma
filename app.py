@@ -107,7 +107,7 @@ from core.ui_helpers import goster_sikistirma_ciktisi, goster_randomness_testi
 
 
 # ─── Sekmeler — sadece gerekli olanlar ──────
-tab0, tab1, tab2, tab4, tab6, tab9, tab11, tab10 = st.tabs([
+tab0, tab1, tab2, tab4, tab6, tab9, tab11, tab12, tab10 = st.tabs([
     "🚀 Hızlı Özet",
     "📊 Huffman",
     "📖 LZW",
@@ -115,6 +115,7 @@ tab0, tab1, tab2, tab4, tab6, tab9, tab11, tab10 = st.tabs([
     "⚡ Hibrit",
     "📈 Shannon",
     "🔄 BWT",
+    "🔮 Next-Token",
     "🤖 Günlük",
 ])
 
@@ -1279,6 +1280,118 @@ with tab9:
     with st.expander("Karakter bazlı entropi analizi"):
         rows = per_char_analysis(text)
         st.dataframe(rows, use_container_width=True)
+
+
+# ═══════════════════════════════════════════════════
+# SEKME 12: NEXT-TOKEN TAHMİN (Shannon 1951 yaklaşımı)
+# ═══════════════════════════════════════════════════
+with tab12:
+    st.subheader("🔮 Next-Token Tahmin — Kontekstli Entropi (Shannon 1951)")
+    st.markdown(
+        "**Shannon'un 1951 deneyinin modern uygulaması.** İnsanlar yerine "
+        "**n-gram olasılık tablosu** kullanarak her karakteri tahmin et, "
+        "ne kadar 'sürpriz' olduğunu ölç. "
+        "Toplam bit sayısı = teorik ideal sıkıştırma."
+    )
+
+    with st.expander("📖 Bu nedir?"):
+        st.markdown("""
+**3 farklı dil modeli ile karşılaştırma:**
+
+1. **Unigram (iid)** — P(c) — karakter bağımsız varsayım (Shannon 1948)
+2. **Bigram** — P(c | önceki) — 1. derece Markov modeli
+3. **Trigram** — P(c | önceki, önceki) — 2. derece Markov modeli
+
+Her seviyede karakterin **bilgi içeriği:**
+
+$$I(c) = -\\log_2 P(c \\mid \\text{context})$$
+
+Toplam = ideal sıkıştırma boyutu.
+
+**Şu projeyle bağlantı:** Bizim Huffman/LZW/BWT karakter bazlı yaklaşımları
+yaklaşık unigram sınırına ulaşır. Kontekstli (bigram/trigram) sıkıştırma için
+daha gelişmiş algoritmalar (arithmetic coding + n-gram) gerekir.
+        """)
+
+    if st.button("▶ Next-Token Analizi Başlat", key="nexttok_btn"):
+        with st.spinner("Türkçe corpus'tan n-gram tablosu oluşturuluyor..."):
+            from core.next_token import karsilastir
+            r = karsilastir(text)
+
+        if "error" in r:
+            st.error(r["error"])
+        else:
+            st.caption(
+                f"📚 Corpus: **{r['corpus_size']:,} karakter** Türkçe metin "
+                f"(`data/large_turkish.txt`). Bu corpus'tan n-gram olasılıkları öğrenildi."
+            )
+
+            # 4 metric
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("Orijinal", f"{r['orig_bits']:,} bit",
+                      help="8 bit/karakter (UTF-8 varsayım)")
+            c2.metric("Unigram (Shannon iid)",
+                      f"{r['unigram']['bits']:,} bit",
+                      delta=f"{r['unigram']['bpc']:.2f} bit/karakter",
+                      delta_color="off")
+            c3.metric("Bigram (Markov-1)",
+                      f"{r['bigram']['bits']:,} bit",
+                      delta=f"{r['bigram']['bpc']:.2f} bit/karakter",
+                      delta_color="off")
+            c4.metric("🎯 Trigram (Markov-2)",
+                      f"{r['trigram']['bits']:,} bit",
+                      delta=f"{r['trigram']['bpc']:.2f} bit/karakter",
+                      delta_color="off")
+
+            # Karşılaştırma grafiği
+            modeller = ["Orijinal\n(8 bit/c)",
+                       f"Unigram\n({r['unigram']['bpc']:.2f})",
+                       f"Bigram\n({r['bigram']['bpc']:.2f})",
+                       f"Trigram\n({r['trigram']['bpc']:.2f})"]
+            degerler = [r['orig_bits'],
+                       r['unigram']['bits'],
+                       r['bigram']['bits'],
+                       r['trigram']['bits']]
+            renkler = ["#888", "#636EFA", "#00CC96", "#FFD700"]
+
+            fig_nt = go.Figure(go.Bar(
+                x=modeller, y=degerler, marker_color=renkler,
+                text=[f"{v:,}" for v in degerler],
+                textposition="outside",
+            ))
+            fig_nt.update_layout(
+                title="Kontekstli Entropi: Model derinleştikçe sıkıştırma artar",
+                yaxis_title="Toplam bit",
+                height=380, showlegend=False,
+            )
+            st.plotly_chart(fig_nt, use_container_width=True)
+
+            # Sonuç yorumu
+            st.markdown("### 📊 Yorum")
+            uni_pct = (1 - r['unigram']['ratio']) * 100
+            bi_pct  = (1 - r['bigram']['ratio']) * 100
+            tri_pct = (1 - r['trigram']['ratio']) * 100
+            iyilesme_bi  = (r['unigram']['bits'] - r['bigram']['bits']) / r['unigram']['bits'] * 100
+            iyilesme_tri = (r['unigram']['bits'] - r['trigram']['bits']) / r['unigram']['bits'] * 100
+
+            st.markdown(f"""
+- **Unigram (Shannon iid):** %{uni_pct:.1f} küçülme — karakterleri bağımsız varsayar
+- **Bigram:** %{bi_pct:.1f} küçülme — 1. derece bağımlılık → Unigram'dan **%{iyilesme_bi:.1f} daha iyi**
+- **Trigram:** %{tri_pct:.1f} küçülme — 2. derece bağımlılık → Unigram'dan **%{iyilesme_tri:.1f} daha iyi**
+
+> **Çıkarım:** Karakterler arası bağlamı modellemek, klasik Shannon'un karakter bağımsız
+> sınırının altına inmeyi sağlar. **Bu, Shannon'un kendisinin 1951 makalesinde gösterdiği şeydir.**
+
+> **Bu projedeki sistemle ilişkisi:** Bizim Huffman/LZW/BWT klasik karakter bazlı sıkıştırma
+> yapar — yaklaşık Unigram sınırına yaklaşır. Trigram seviyesine inmek için Markov-tabanlı
+> arithmetic coder veya LLM tabanlı sıkıştırıcı gerekir.
+            """)
+
+            st.info(
+                "💡 **Akademik referans:** Shannon, C. E. (1951). "
+                "'Prediction and Entropy of Printed English.' "
+                "*Bell System Technical Journal*, 30(1), 50-64."
+            )
 
 
 # ═══════════════════════════════════════════════════
