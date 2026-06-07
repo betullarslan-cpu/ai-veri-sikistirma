@@ -19,7 +19,7 @@ veri türüne göre otomatik en iyi yöntemi seçen Streamlit uygulaması.
 
 ---
 
-## 🎯 Öne Çıkan Sonuçlar
+##  Öne Çıkan Sonuçlar
 
 | Metrik | Değer |
 |--------|-------|
@@ -31,7 +31,7 @@ veri türüne göre otomatik en iyi yöntemi seçen Streamlit uygulaması.
 
 ---
 
-## 🏗️ Sistem Mimarisi
+##  Sistem Mimarisi
 
 ```mermaid
 graph TB
@@ -49,7 +49,7 @@ graph TB
 
 ---
 
-## 🎨 Tasarım Kararları (Süreç Yansıması)
+##  Tasarım Kararları 
 
 ### 1. Neden Huffman + LZW + BWT? 
 **Karar:** 3 farklı tekniği aynı pipeline'da birleştirdim.
@@ -74,7 +74,7 @@ graph TB
 
 ---
 
-## ⚙️ Çalıştırma
+##  Çalıştırma
 
 ### Yerel
 ```bash
@@ -98,7 +98,7 @@ pytest tests/ -v
 
 ---
 
-## 📁 Proje Yapısı
+##  Proje Yapısı
 
 ```
 project_veri/
@@ -130,7 +130,7 @@ project_veri/
 
 ---
 
-## 🧠 Sinir Ağı Detayları
+##  Sinir Ağı Detayları
 
 **Mimari:** MLP `11 → 32 → 16 → 8 → 3`
 
