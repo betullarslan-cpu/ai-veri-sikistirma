@@ -127,19 +127,6 @@ with tab0:
     st.subheader("🚀 Hızlı Özet — Tek Ekranda Tüm Sonuçlar")
     st.caption("Bir butonla tüm algoritmaları çalıştır, yan yana karşılaştır. API gerekmez.")
 
-    with st.expander("ℹ️ Bu sekmede ne göreceksin?"):
-        st.markdown("""
-**Butona basınca otomatik olarak şunlar hesaplanır:**
-
-1. **4 ana metrik:** Orijinal boyut, Shannon limiti, Standart Huffman, Akıllı Hibrit
-2. **Sinir ağı kararı:** Hangi algoritmayı neden seçti
-3. **Karşılaştırma grafiği:** 5 algoritmanın bit sayıları yan yana
-4. **Algoritma sonuçları tablosu:** Her algoritmanın küçülme yüzdesi
-5. **Sıkıştırılmış çıktı:** Gerçek bit dizisi + indirilebilir `.bin` dosyası
-
-Her bölümün altında **💡 ile başlayan kutucuklar** sonucun ne anlama geldiğini açıklar.
-        """)
-
     if st.button("▶ Tümünü Hesapla", key="quick_run", type="primary"):
         with st.spinner("Hesaplanıyor..."):
             from core.bwt import compare as _bwt_cmp
@@ -188,21 +175,6 @@ Her bölümün altında **💡 ile başlayan kutucuklar** sonucun ne anlama geld
         )
 
         # ── METRIKLER NE ANLAMA GELIYOR? ──
-        with st.expander("💡 Yukarıdaki metrikler ne anlama geliyor?"):
-            _ks_huff = (1 - _sm['standard_ratio']) * 100
-            _ks_smart = (1 - _sm['smart_ratio']) * 100
-            _shan_pct = (1 - _min/_orig) * 100
-            st.markdown(f"""
-- **Orijinal ({_orig:,} bit):** Metin sıkıştırılmadan saklansaydı bu kadar yer kaplardı.
-- **Shannon limiti ({_min:,} bit, %{_shan_pct:.1f} küçülme):**
-  Karakter olasılıklarına göre teorik en küçük boyut. Hiçbir kayıpsız algoritma bunun altına inemez.
-- **Standart Huffman ({_sm['standard_bits']:,} bit, %{_ks_huff:.1f} küçülme):**
-  Klasik Huffman + frekans tablosunun ek yükü. 1952'den beri kullanılan referansımız.
-- **🏆 Akıllı Hibrit ({_sm['smart_bits']:,} bit, %{_ks_smart:.1f} küçülme):**
-  Bizim sistemimizin sonucu. Shannon limitine **%{(_sm['smart_bits']/_min-1)*100:.1f}** uzakta —
-  yani neredeyse teorik mükemmel.
-            """)
-
         # NN bilgisi tek satır
         st.success(
             f"🧠 **Sinir Ağı kararı:** {_nn['algorithm'].upper()} (%{_nn['confidence']*100:.0f} güven) — "
@@ -211,32 +183,20 @@ Her bölümün altında **💡 ile başlayan kutucuklar** sonucun ne anlama geld
             f"({_sm['saved_bits']:,} bit tasarruf)"
         )
 
-        with st.expander("💡 Sinir ağı nasıl karar verdi?"):
+        with st.expander("💡 NN nasıl karar verdi?"):
             _feat = _nn.get("features", {})
-            _entrop = _feat.get("entropi", 0)
-            _alpha = _feat.get("alfabe_boyutu_log", 0)
-            _maxrun = _feat.get("max_koşu_oran", 0)
             _algo = _nn['algorithm']
             _explain = {
-                "huffman": "Entropi yüksek + tekrar az → karakter bazlı kodlamak en iyisi.",
-                "lzw":     "Tekrarlı kelime/ifadeler var → sözlük tabanlı kodlama avantajlı.",
-                "bwt":     "Yapısal düzen var (küçük alfabe veya benzer karakterler kümelenebilir) → BWT permütasyonu çok kazandırır.",
+                "huffman": "Yüksek entropi → karakter bazlı kodlama.",
+                "lzw":     "Tekrarlı ifadeler → sözlük tabanlı kodlama.",
+                "bwt":     "Yapısal düzen → BWT permütasyonu.",
             }.get(_algo, "")
-            st.markdown(f"""
-Sinir ağı (MLP 32→16→8) metinden **11 özellik** çıkardı:
-
-- **Entropi:** {_entrop:.3f} (yüksek = tahmin edilemez)
-- **Alfabe boyutu (log₂):** {_alpha:.2f} (küçük alfabe BWT'ye yarar)
-- **Max koşu oranı:** {_maxrun:.4f} (tekrarlı bloklar var mı?)
-- **Olasılıklar:** Huffman %{_nn['probabilities'].get('huffman',0)*100:.1f}, "
-LZW %{_nn['probabilities'].get('lzw',0)*100:.1f}, "
-BWT %{_nn['probabilities'].get('bwt',0)*100:.1f}
-
-**Karar gerekçesi:** {_explain}
-
-> Model %{_nn.get('cv_accuracy', 0)*100:.1f} cross-validation doğruluğuyla çalışıyor —
-> eğitim ezberi değil, gerçek genelleme.
-            """)
+            st.markdown(
+                f"Entropi: **{_feat.get('entropi', 0):.3f}** · "
+                f"Alfabe: **{_feat.get('alfabe_boyutu_log', 0):.2f}** · "
+                f"Koşu: **{_feat.get('max_koşu_oran', 0):.4f}**  \n"
+                f"**Gerekçe:** {_explain}"
+            )
 
         # ── 5 algoritmali kompakt grafik ──
         _res = _bwt['results']
@@ -450,58 +410,19 @@ with tab1:
                 key_suffix="huff_std",
             )
 
-            # ── DECODE: Adım adım sıkıştırmayı geri aç ──
-            st.markdown("### 🔓 Açma (Decompression) — Adım Adım Kayıpsızlık Kanıtı")
+            # ── DECODE: Kayıpsızlık Doğrulama ──
+            st.markdown("### 🔓 Açma (Decompression) — Kayıpsızlık Kanıtı")
+            _decoded = _huff_decode(_h_out['bit_string'], _h_out['codes'])
+            _kayipsiz = (_decoded == text)
 
-            with st.expander("🔍 **Aşama 1 — Girdi:** Sıkıştırılmış bit dizisi", expanded=False):
-                st.code(_h_out['bit_string'][:200] + ("..." if len(_h_out['bit_string']) > 200 else ""))
-                st.caption(f"Toplam **{len(_h_out['bit_string']):,}** bit "
-                          f"({len(_h_out['byte_data']):,} byte binary).")
-
-            with st.expander("🔍 **Aşama 2 — Ters Huffman Tablosu** (kod → karakter)", expanded=False):
+            with st.expander("🔍 Huffman kod tablosu (ilk 15)"):
                 _reverse = {v: k for k, v in _h_out['codes'].items()}
-                # En kısa kodları göster (en sık karakterler)
                 _sorted_rev = sorted(_reverse.items(), key=lambda x: len(x[0]))
-                _tablo_rows = [
+                st.dataframe([
                     {"Bit kodu": k, "Uzunluk": f"{len(k)} bit", "Karakter": repr(v)}
                     for k, v in _sorted_rev[:15]
-                ]
-                st.dataframe(_tablo_rows, use_container_width=True, hide_index=True)
-                st.caption(f"Toplam **{len(_reverse)} kod** var (ilk 15 gösteriliyor). "
-                          f"Encode'da ağaçta kurduğumuz prefix-free kodlar.")
-
-            with st.expander("🔍 **Aşama 3 — Tampon (buffer) ile bit okuma**", expanded=False):
-                # İlk birkaç decode adımını görsel olarak göster
-                _adimlar = []
-                _buf = ""
-                _idx = 0
-                for _i, _bit in enumerate(_h_out['bit_string'][:200]):
-                    _buf += _bit
-                    if _buf in _reverse:
-                        _adimlar.append({
-                            "Adım": _idx + 1,
-                            "Okunan bit dizisi": _buf,
-                            "Eşleşen karakter": repr(_reverse[_buf]),
-                            "Kalan tampon": "(temizlendi)",
-                        })
-                        _buf = ""
-                        _idx += 1
-                        if _idx >= 12:
-                            break
-                st.dataframe(_adimlar, use_container_width=True, hide_index=True)
-                st.caption(
-                    "Bit-bit okuyup tampona ekliyoruz. Tampon Huffman kodlarından biriyle "
-                    "**eşleşince** o karakteri yazıp tamponu sıfırlıyoruz. Bu, ağaçta "
-                    "yapraktan köke giden tek yolun garantisidir."
-                )
-
-            with st.expander("🔍 **Aşama 4 — Decode edilmiş ham metin**", expanded=False):
-                _decoded = _huff_decode(_h_out['bit_string'], _h_out['codes'])
-                st.code(_decoded[:400] + ("..." if len(_decoded) > 400 else ""), language=None)
-                st.caption(f"Toplam **{len(_decoded):,}** karakter geri kurtarıldı.")
-
-            st.markdown("#### ✅ Aşama 5 — Doğrulama: Orijinal == Decode")
-            _kayipsiz = (_decoded == text)
+                ], use_container_width=True, hide_index=True)
+                st.caption(f"Toplam **{len(_reverse)} prefix-free kod**.")
             cd1, cd2 = st.columns(2)
             with cd1:
                 st.markdown("**Orijinal metin:**")
@@ -681,73 +602,25 @@ with tab2:
         len(text.encode("utf-8")), key_suffix="lzw_std",
     )
 
-    # ── DECODE: Adım adım LZW'yi geri aç ──
-    st.markdown("### 🔓 Açma (Decompression) — Adım Adım Kayıpsızlık Kanıtı")
-
-    with st.expander("🔍 **Aşama 1 — Girdi:** LZW kod listesi", expanded=False):
-        _ilk_kodlar = _codes_lzw[:30]
-        st.code(str(_ilk_kodlar) + ("..." if len(_codes_lzw) > 30 else ""))
-        st.caption(f"Toplam **{len(_codes_lzw):,}** kod, her biri **{_bpc} bit**. "
-                  f"Standart 8-bit ASCII'ye göre {(1 - _bpc/8)*100:.1f}% daha az bit.")
-
-    with st.expander("🔍 **Aşama 2 — Başlangıç sözlüğü kuruluyor**", expanded=False):
-        # initial_dict: encode'da kullandığımız aynı sözlük
-        _init_dict = {chr(i): i for i in range(256)}
-        for _ch in set(text):
-            if _ch not in _init_dict:
-                _init_dict[_ch] = len(_init_dict)
-        st.caption(f"İlk **{len(_init_dict)}** giriş hazır: 256 standart ASCII + "
-                  f"**{len(_init_dict) - 256}** Türkçe karakter (ş, ğ, ü, ö, ç, ı...).")
-        # Türkçe karakter eşlemelerini göster
-        _tr_kars = [(chr(i), i) for i in range(256, min(len(_init_dict), 270))]
-        if _tr_kars:
-            _tr_rows = [{"Karakter": repr(ch), "Kod": str(c)} for ch, c in _tr_kars]
-            st.dataframe(_tr_rows, use_container_width=True, hide_index=True)
-
-    with st.expander("🔍 **Aşama 3 — Kod-kod decode (canlı sözlük büyütme)**", expanded=False):
-        # İlk 10 decode adımını simüle et
-        _sim_dict = dict(_init_dict)
-        _rev_sim = {v: k for k, v in _sim_dict.items()}
-        _next_code = len(_sim_dict)
-        _adimlar = []
-        _prev = None
-        for _i, _code in enumerate(_codes_lzw[:10]):
-            if _code in _rev_sim:
-                _entry = _rev_sim[_code]
-            elif _code == _next_code and _prev is not None:
-                _entry = _prev + _prev[0]
-            else:
-                _entry = "?"
-
-            _new_entry = ""
-            if _prev is not None:
-                _new_entry = _prev + _entry[0]
-                _rev_sim[_next_code] = _new_entry
-                _next_code += 1
-
-            _adimlar.append({
-                "Adım": _i + 1,
-                "Kod": _code,
-                "Sözlükten çıkan": repr(_entry),
-                "Sözlüğe eklenen": repr(_new_entry) if _new_entry else "—",
-                "Sözlük boyutu": _next_code,
-            })
-            _prev = _entry
-        st.dataframe(_adimlar, use_container_width=True, hide_index=True)
-        st.caption("LZW'nin sihri: decoder **encoder ile aynı patternleri** keşfeder "
-                  "(sözlük dosya başında gönderilmez). Her okunan kodda yeni bir pattern üretilir.")
-
-    with st.expander("🔍 **Aşama 4 — Decode edilmiş ham metin**", expanded=False):
-        from core.lzw import lzw_decode as _lzw_dec
-        try:
-            _lzw_decoded = _lzw_dec(_codes_lzw, _init_dict)
-        except Exception as _e:
-            _lzw_decoded = f"[Decode hatası: {_e}]"
-        st.code(_lzw_decoded[:400] + ("..." if len(_lzw_decoded) > 400 else ""), language=None)
-        st.caption(f"Toplam **{len(_lzw_decoded):,}** karakter geri kurtarıldı.")
-
-    st.markdown("#### ✅ Aşama 5 — Doğrulama: Orijinal == Decode")
+    # ── DECODE: Kayıpsızlık Doğrulama ──
+    st.markdown("### 🔓 Açma (Decompression) — Kayıpsızlık Kanıtı")
+    _init_dict = {chr(i): i for i in range(256)}
+    for _ch in set(text):
+        if _ch not in _init_dict:
+            _init_dict[_ch] = len(_init_dict)
+    from core.lzw import lzw_decode as _lzw_dec
+    try:
+        _lzw_decoded = _lzw_dec(_codes_lzw, _init_dict)
+    except Exception as _e:
+        _lzw_decoded = f"[Decode hatası: {_e}]"
     _lzw_kayipsiz = (_lzw_decoded == text)
+
+    with st.expander("🔍 LZW kod listesi (ilk 30) ve sözlük bilgisi"):
+        st.code(str(_codes_lzw[:30]) + ("..." if len(_codes_lzw) > 30 else ""))
+        st.caption(
+            f"Toplam **{len(_codes_lzw):,}** kod × **{_bpc} bit** · "
+            f"Sözlük: 256 ASCII + **{len(_init_dict) - 256}** Türkçe karakter."
+        )
 
     cd_l1, cd_l2 = st.columns(2)
     with cd_l1:
@@ -971,14 +844,7 @@ with tab4:
                     "Doğruluk": f"%{acc:.1f}",
                 })
             st.dataframe(rows, use_container_width=True, hide_index=True)
-            with st.expander("💡 Nasıl okunur?"):
-                st.markdown("""
-- **Satır:** Gerçek sınıf (doğru cevap)
-- **Sütun:** Modelin tahmini
-- **Köşegen (sol üst → sağ alt):** Doğru tahminler
-- **Köşegen dışı:** Hatalar
-- **Örnek:** "BWT satırında LZW sütununda 5" → 5 BWT örneğini yanlışlıkla LZW dedi
-                """)
+            st.caption("Satır = gerçek sınıf, sütun = tahmin. Köşegende olanlar doğru.")
 
     # ── Feature Importance — Hangi özellik kararı belirliyor? ──
     st.markdown("---")
@@ -1019,44 +885,15 @@ with tab4:
                 f"{fi['feature_names'][1]} → "
                 f"{fi['feature_names'][2]}"
             )
-            with st.expander("💡 Bu sonuç ne anlama geliyor?"):
-                st.markdown("""
-- **Yüksek önem (üstteki)**: Bu özellik olmadan model **doğruluk kaybeder**.
-  Mesela `entropi` yüksek skor aldıysa, NN entropiye bakıp karar veriyor demektir.
-- **Düşük önem (alttaki)**: Bu özellik az katkı sağlıyor — gelecekte kaldırılabilir.
-- **Negatif önem**: Özellik aslında yanıltıcı (nadir).
-
-**Hocaya gösterilebilir kanıt:** Bu grafik sinir ağının **kara kutu olmadığını**,
-hangi karakteristikleri kullandığını şeffaf gösteriyor.
-                """)
-
-    with st.expander("📖 Nasıl çalışır?"):
-        st.markdown("""
-        **11 Özellik:**
-        1. Shannon Entropisi — ne kadar tahmin edilemez?
-        2. Benzersiz karakter oranı
-        3. Top-3 karakter yoğunluğu
-        4. Boşluk oranı (doğal dil göstergesi)
-        5. Türkçe karakter oranı
-        6. Ortalama çalışma uzunluğu (run-length)
-        7. Rakam oranı
-        8. Büyük harf oranı
-        9. Bigram entropisi (yapısal düzen)
-        10. Maksimum koşu oranı (BWT için kritik)
-        11. Alfabe boyutu (log2) — küçük alfabe BWT'yi kazandırır
-
-        **Karar:**
-        - Yüksek entropi + kısa metin → **Huffman**
-        - Tekrarlı kelimeler/ifadeler → **LZW**
-        - Düşük entropi + küçük alfabe + yapısal → **BWT + RLE + Huffman**
-
-        **Ezber önleme:**
-        - Cross-validation (5-fold)
-        - L2 regularizasyon (alpha=1e-3)
-        - Erken durdurma (early stopping)
-        - Hold-out test seti (modelin hiç görmediği)
-        - 1900+ örnek (sentetik + 4 farklı corpus)
-        """)
+    with st.expander("📖 Mimari ve eğitim"):
+        st.markdown(
+            "**MLP 11 → 32 → 16 → 8 → 3** (Huffman/LZW/BWT)  \n"
+            "**11 özellik:** entropi, benzersiz oran, top-3, boşluk, "
+            "Türkçe oran, run-length, rakam, büyük harf, bigram entropi, "
+            "max koşu, alfabe boyutu (log₂)  \n"
+            "**Ezber önleme:** L2 (α=1e-3) + early stopping + 5-fold CV + "
+            "hold-out test (2.357 örnek, 14 kategori)"
+        )
 
 # ═══════════════════════════════════════════════════
 # SEKME 6: HİBRİT SIKIŞTURMA
@@ -1498,95 +1335,36 @@ with tab11:
     _bwt_str = _bwt_enc['bwt']
     _orig_idx = _bwt_enc['orig_idx']
 
-    with st.expander("🔍 **Aşama 1 — Girdi:** BWT permüte metni + orijinal indeks", expanded=False):
-        st.code(_bwt_str[:150] + ("..." if len(_bwt_str) > 150 else ""))
-        st.caption(f"BWT uzunluğu: **{len(_bwt_str)}** karakter | "
-                  f"Orijinal indeks: **{_orig_idx}** "
-                  f"(bu, kodlamada gönderilen tek metadata).")
-
-    with st.expander("🔍 **Aşama 2 — Karakter rank'larını hesapla**", expanded=False):
-        from collections import Counter as _C
-        _seen = {}
-        _rank = []
-        for _ch in _bwt_str:
-            _rank.append(_seen.get(_ch, 0))
-            _seen[_ch] = _seen.get(_ch, 0) + 1
-        # İlk 15 karakterin rank'larını göster
-        _rank_rows = [
-            {"Pozisyon": i, "Karakter": repr(_bwt_str[i]), "Rank (kaçıncı kez)": _rank[i]}
-            for i in range(min(15, len(_bwt_str)))
-        ]
-        st.dataframe(_rank_rows, use_container_width=True, hide_index=True)
-        st.caption(
-            "Her karakter için **\"BWT'de kaçıncı kez göründü?\"** sorusunun cevabı. "
-            "Bu, LF mapping'in özüdür."
-        )
-
-    with st.expander("🔍 **Aşama 3 — Sıralı dizi (F sütunu) — başlangıç pozisyonları**", expanded=False):
-        _char_counts = _C(_bwt_str)
-        _starts = {}
-        _pos = 0
-        for _ch in sorted(_char_counts.keys()):
-            _starts[_ch] = _pos
-            _pos += _char_counts[_ch]
-        _start_rows = [
-            {"Karakter": repr(ch), "Toplam": str(_char_counts[ch]), "F'deki başlangıç": str(p)}
-            for ch, p in list(_starts.items())[:15]
-        ]
-        st.dataframe(_start_rows, use_container_width=True, hide_index=True)
-        st.caption(
-            "Eğer tüm BWT karakterleri sıralasaydık (F sütunu), her karakterin nerede "
-            "başladığını gösterir. Örnek: 'a' sıralı dizide pozisyon X'te başlar."
-        )
-
-    with st.expander("🔍 **Aşama 4 — LF Mapping kuruluyor**", expanded=False):
-        _lf = [_starts[_bwt_str[i]] + _rank[i] for i in range(len(_bwt_str))]
-        _lf_rows = [
-            {"i (L'deki pozisyon)": i,
-             "L[i] (karakter)": repr(_bwt_str[i]),
-             "LF[i] (F'deki konum)": _lf[i]}
-            for i in range(min(15, len(_bwt_str)))
-        ]
-        st.dataframe(_lf_rows, use_container_width=True, hide_index=True)
-        st.caption(
-            "**LF Mapping:** L'deki (BWT) i. konumdaki karakter, sıralı dizide (F) hangi "
-            "konumdadır? Bu eşleme **bijektif**tir — her karakterin tek bir LF eşi vardır. "
-            "Bu, dolambacın geri çevrilmesini sağlar."
-        )
-
-    with st.expander("🔍 **Aşama 5 — Orijinal metni geri kur (LF zinciri)**", expanded=False):
-        _result = []
-        _idx = _orig_idx
-        _adimlar = []
-        for _step in range(min(10, len(_bwt_str))):
-            _result.append(_bwt_str[_idx])
-            _adimlar.append({
-                "Adım": _step + 1,
-                "Mevcut idx": _idx,
-                "Eklenen karakter": repr(_bwt_str[_idx]),
-                "Sonraki idx (LF)": _lf[_idx],
-            })
-            _idx = _lf[_idx]
-        st.dataframe(_adimlar, use_container_width=True, hide_index=True)
-        st.caption(
-            "Orijinal indeksten başla, **LF[idx]** ile sıçra, gittiğin yerin karakterini yaz. "
-            "n iterasyonda metni terste kurar, en sonda ters çevir → orijinal!"
-        )
-
     # Decode: bloklu modda tüm blokları aç, tek bloksa eski yöntem
     if _n_chunks > 1:
         from core.bwt import bwt_chunked_decode as _bwt_chunk_dec
         _bwt_decoded = _bwt_chunk_dec(_bwt_enc['chunks'])
     else:
         _bwt_decoded = _bwt_dec(_bwt_str, _orig_idx)
-
-    with st.expander("🔍 **Aşama 6 — Decode edilmiş ham metin**", expanded=False):
-        st.code(_bwt_decoded[:400] + ("..." if len(_bwt_decoded) > 400 else ""), language=None)
-        st.caption(f"Toplam **{len(_bwt_decoded):,}** karakter geri kurtarıldı "
-                   f"({_n_chunks} blok birleştirildi).")
-
-    st.markdown("#### ✅ Aşama 7 — Doğrulama: Orijinal == Decode")
     _bwt_kayipsiz = (_bwt_decoded == text)
+
+    with st.expander("🔍 BWT permüte metin + LF mapping detayı"):
+        st.markdown(f"**BWT (ilk 150):**")
+        st.code(_bwt_str[:150] + ("..." if len(_bwt_str) > 150 else ""))
+        st.caption(f"BWT uzunluğu: **{len(_bwt_str)}**, Orijinal indeks: **{_orig_idx}**.")
+
+        # Hızlı LF mapping tablosu (ilk 12)
+        from collections import Counter as _C
+        _seen, _rank = {}, []
+        for _ch in _bwt_str:
+            _rank.append(_seen.get(_ch, 0))
+            _seen[_ch] = _seen.get(_ch, 0) + 1
+        _char_counts = _C(_bwt_str)
+        _starts, _pos = {}, 0
+        for _ch in sorted(_char_counts.keys()):
+            _starts[_ch] = _pos
+            _pos += _char_counts[_ch]
+        _lf = [_starts[_bwt_str[i]] + _rank[i] for i in range(len(_bwt_str))]
+        st.markdown("**LF Mapping (ilk 12, decode iterasyonu için):**")
+        st.dataframe([
+            {"i": i, "L[i]": repr(_bwt_str[i]), "LF[i]": _lf[i]}
+            for i in range(min(12, len(_bwt_str)))
+        ], use_container_width=True, hide_index=True)
 
     cd_b1, cd_b2 = st.columns(2)
     with cd_b1:
