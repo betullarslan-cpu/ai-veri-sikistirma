@@ -1217,21 +1217,29 @@ with tab10:
 
         adimlar = diary.get("adimlar", [])
         refl_adimlar = [a for a in adimlar if "yansima" in a]
-        normal_adimlar = [a for a in adimlar if "yansima" not in a]
+        akademik_adimlar = [a for a in adimlar if "kaynak" in a]
+        normal_adimlar = [a for a in adimlar
+                          if "yansima" not in a and "kaynak" not in a]
 
         # ── Özet metrikler ──
         m1, m2, m3, m4 = st.columns(4)
         m1.metric("Toplam Adım", f"{len(adimlar)}")
-        m2.metric("Reflektif Not", f"{len(refl_adimlar)}",
+        m2.metric("📚 Akademik Doğrulama", f"{len(akademik_adimlar)}",
+                  help="İlgili klasik makale/kitapla doğrulama girişleri")
+        m3.metric("🪞 Reflektif Not", f"{len(refl_adimlar)}",
                   help="Süreç değerlendirmesi içeren girişler")
-        m3.metric("Token Kullanımı", f"{diary.get('toplam_token', 0):,}",
-                  help="Toplam Groq LLM API token tüketimi")
         m4.download_button(
             "⬇ JSON İndir",
             data=open(diary_file).read(),
             file_name="ai_diary.json",
             mime="application/json",
             help="Rapora ek olarak teslim edilebilir",
+        )
+        st.caption(
+            f"💬 Klasik AI etkileşim: **{len(normal_adimlar)}** · "
+            f"📚 Akademik doğrulama: **{len(akademik_adimlar)}** "
+            f"(Sayood, Cover & Thomas, Burrows-Wheeler vb. ile) · "
+            f"Toplam token: **{diary.get('toplam_token', 0):,}**"
         )
 
         st.markdown("---")
@@ -1240,19 +1248,22 @@ with tab10:
         col_s, col_t = st.columns([3, 1])
         with col_s:
             arama = st.text_input("🔍 Adımlar içinde ara",
-                                  placeholder="örn: BWT, Türkçe, hata, NN...")
+                                  placeholder="örn: BWT, Sayood, Türkçe, NN...")
         with col_t:
             tip_filtre = st.selectbox(
                 "Tip",
-                ["Hepsi", "Sadece reflektif", "Sadece klasik"],
+                ["Hepsi", "📚 Akademik doğrulama", "🪞 Reflektif", "💬 Klasik AI"],
             )
 
         # Filtre uygula
         gosterilecek = adimlar
-        if tip_filtre == "Sadece reflektif":
+        if tip_filtre == "📚 Akademik doğrulama":
+            gosterilecek = akademik_adimlar
+        elif tip_filtre == "🪞 Reflektif":
             gosterilecek = refl_adimlar
-        elif tip_filtre == "Sadece klasik":
+        elif tip_filtre == "💬 Klasik AI":
             gosterilecek = normal_adimlar
+
         if arama:
             arm = arama.lower()
             gosterilecek = [
@@ -1261,6 +1272,7 @@ with tab10:
                 or arm in a.get("verilen_prompt", "").lower()
                 or arm in a.get("sonuc", "").lower()
                 or arm in a.get("yansima", "").lower()
+                or arm in a.get("kaynak", "").lower()
             ]
 
         st.caption(f"**{len(gosterilecek)}** adım gösteriliyor "
@@ -1268,21 +1280,30 @@ with tab10:
 
         # ── Adımları göster ──
         for step in gosterilecek:
-            etiket = "🪞" if "yansima" in step else "💬"
+            # Etiket: akademik > reflektif > klasik
+            if "kaynak" in step:
+                etiket = "📚"
+            elif "yansima" in step:
+                etiket = "🪞"
+            else:
+                etiket = "💬"
+
             with st.expander(
                 f"{etiket} Adım {step['adim']}: {step['hedeflenen_islem']}"
             ):
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.markdown("**Verilen Prompt**")
+                    st.markdown("**Verilen Prompt / Soru**")
                     st.code(step["verilen_prompt"][:500], language=None)
                 with col2:
-                    st.markdown("**AI Cevabı**")
+                    st.markdown("**AI Cevabı / Akademik Bulgu**")
                     st.code(step["ai_cevabi"][:500], language=None)
                 st.markdown(
                     f"**Sorun:** {step.get('sorun', '—')}  \n"
                     f"**Sonuç:** {step.get('sonuc', '—')}"
                 )
+                if "kaynak" in step:
+                    st.success(f"📚 **Akademik kaynak:** {step['kaynak']}")
                 if "yansima" in step:
                     st.info(f"🪞 **Yansıma:** {step['yansima']}")
                 if step.get("token_kullanim"):
