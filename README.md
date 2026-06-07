@@ -1,6 +1,6 @@
 ---
 title: AI Destekli Veri Sıkıştırma
-emoji: 🗜️
+
 colorFrom: indigo
 colorTo: green
 sdk: docker
@@ -8,7 +8,7 @@ app_port: 8501
 pinned: false
 ---
 
-# 🗜️ AI Destekli Veri Sıkıştırma
+#  AI Destekli Veri Sıkıştırma
 
 > **Yıldız Teknik Üniversitesi — Veri Sıkıştırma Dönem Projesi**
 
@@ -160,7 +160,7 @@ project_veri/
 
 ---
 
-## 📊 Endüstri Karşılaştırması
+##   Karşılaştırması
 
 | Algoritma | Tipik Doğal Türkçe (920 byte) | Süre |
 |-----------|-------------------------------|------|
@@ -171,7 +171,7 @@ project_veri/
 
 ---
 
-## 📚 Kaynaklar
+##  Kaynaklar
 
 1. Huffman, D. A. (1952). "A Method for the Construction of Minimum-Redundancy Codes"
 2. Welch, T. A. (1984). "A Technique for High-Performance Data Compression"
