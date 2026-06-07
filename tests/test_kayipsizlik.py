@@ -146,6 +146,28 @@ def test_bwt_edge_cases(metin):
     assert decoded == metin
 
 
+@pytest.mark.parametrize("metin", TEMEL_METINLER + TURKCE_METINLER)
+def test_mtf_kayipsiz(metin):
+    """MTF (Move-to-Front) encode → decode kayıpsız olmalı."""
+    from core.bwt import mtf_encode, mtf_decode
+    indices, alphabet = mtf_encode(metin)
+    decoded = mtf_decode(indices, alphabet)
+    assert decoded == metin, f"MTF bozuk: '{metin}' -> '{decoded}'"
+
+
+def test_mtf_bwt_pipeline_kayipsiz():
+    """BWT → MTF → MTF⁻¹ → BWT⁻¹ tüm pipeline kayıpsız."""
+    from core.bwt import bwt_encode, bwt_decode, mtf_encode, mtf_decode
+    metin = "merhaba dunya, bu klasik bzip2 testidir."
+    # Forward: BWT → MTF
+    bwt, idx = bwt_encode(metin)
+    mtf_indices, alpha = mtf_encode(bwt)
+    # Reverse: MTF⁻¹ → BWT⁻¹
+    bwt_back = mtf_decode(mtf_indices, alpha)
+    metin_back = bwt_decode(bwt_back, idx)
+    assert metin_back == metin
+
+
 def test_bwt_full_pipeline_dondurulebilir():
     """BWT+RLE+Huffman tam pipeline: encode'da bilgi kaybetmemeli."""
     metin = "merhaba dunya, bu bir test metnidir."

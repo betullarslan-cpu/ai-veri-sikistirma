@@ -191,6 +191,61 @@ def bwt_chunked_decode(chunks: list) -> str:
 
 
 # ─────────────────────────────────────────────────────
+# 1c. MTF (Move-to-Front) — klasik bzip2 ara katmanı
+# ─────────────────────────────────────────────────────
+# Salomon (2007), §8.5: BWT sonrası MTF uygulanır → küçük sayılar
+# çoğunluğa geçer (çünkü BWT benzer karakterleri kümeler).
+# Sonra Huffman bu küçük sayıları çok verimli kodlar.
+#
+# Klasik bzip2 pipeline: BWT → MTF → RLE → Huffman
+# Bizim önceki versiyon: BWT → RLE → Huffman (MTF atlanmıştı)
+
+def mtf_encode(text: str, alphabet: list = None) -> tuple:
+    """
+    Move-to-Front kodlama: Karakterleri liste pozisyonu olarak yaz,
+    her gördüğün karakteri listenin başına taşı.
+
+    Returns:
+        (indices, initial_alphabet)
+        indices: int listesi (pozisyon numaraları)
+        initial_alphabet: encode'da kullanılan başlangıç alfabesi
+                          (decode için aynısı gerekli)
+    """
+    if alphabet is None:
+        alphabet = sorted(set(text))
+    alpha = list(alphabet)
+    initial = list(alphabet)
+
+    indices = []
+    for ch in text:
+        if ch not in alpha:
+            indices.append(-1)  # Hata kodu
+            continue
+        idx = alpha.index(ch)
+        indices.append(idx)
+        # Move to front
+        alpha.pop(idx)
+        alpha.insert(0, ch)
+
+    return indices, initial
+
+
+def mtf_decode(indices: list, alphabet: list) -> str:
+    """MTF kodları → orijinal metin (encode'un tersi)."""
+    alpha = list(alphabet)
+    result = []
+    for idx in indices:
+        if idx < 0 or idx >= len(alpha):
+            continue
+        ch = alpha[idx]
+        result.append(ch)
+        # Move to front
+        alpha.pop(idx)
+        alpha.insert(0, ch)
+    return "".join(result)
+
+
+# ─────────────────────────────────────────────────────
 # 2. RLE (Run-Length Encoding)
 # ─────────────────────────────────────────────────────
 
@@ -414,6 +469,64 @@ def huffman_encode_bytes(text: str) -> dict:
     }
 
 
+def bwt_mtf_rle_huffman_bits(text: str) -> int:
+    """
+    KLASİK bzip2 pipeline: BWT → MTF → RLE → Huffman.
+
+    MTF eklenince BWT'nin oluşturduğu karakter kümeleri **küçük sayılara**
+    dönüşür (0, 1, 2 ağırlıklı). Bu sayıların entropisi karakter
+    entropisinden daha düşük → daha verimli sıkıştırma.
+
+    Returns: Toplam bit sayısı (tüm metin, 8000+ karakterler için bloklu).
+    """
+    if len(text) <= MAX_BWT_LEN:
+        return _bwt_mtf_rle_huffman_bits_single(text)
+    total = 0
+    for i in range(0, len(text), MAX_BWT_LEN):
+        total += _bwt_mtf_rle_huffman_bits_single(text[i:i + MAX_BWT_LEN])
+    return total
+
+
+def _bwt_mtf_rle_huffman_bits_single(text: str) -> int:
+    """Tek blok için BWT+MTF+RLE+Huffman bit hesabı."""
+    bwt, _ = bwt_encode(text)
+    if not bwt:
+        return 0
+
+    # MTF aşaması: karakter → küçük sayı dizisi
+    mtf_indices, alphabet = mtf_encode(bwt)
+    if not mtf_indices:
+        return 0
+
+    # RLE: tekrarlı sayıları sıkıştır
+    runs = []  # (sayı, count)
+    i = 0
+    while i < len(mtf_indices):
+        val = mtf_indices[i]
+        cnt = 0
+        while i < len(mtf_indices) and mtf_indices[i] == val:
+            cnt += 1
+            i += 1
+        runs.append((val, cnt))
+
+    # Huffman: sayıları kodla
+    val_freq = Counter(v for v, _ in runs)
+    total_runs = sum(val_freq.values())
+    val_probs = {v: c / total_runs for v, c in val_freq.items()}
+    codes = _build_huffman(val_probs)
+
+    bits = 0
+    for v, count in runs:
+        bits += len(codes.get(v, "0" * 16))
+        bits += 2 * int(math.log2(count)) + 1 if count > 0 else 1
+
+    # BWT indeks + alfabe bilgisi
+    bits += math.ceil(math.log2(len(bwt) + 1))
+    bits += len(alphabet) * 12  # alfabe overhead
+
+    return bits
+
+
 def _bwt_rle_huffman_bits_single(text: str) -> int:
     """Tek blok için BWT+RLE+Huffman bit hesabı."""
     bwt, orig_idx = bwt_encode(text)
@@ -557,6 +670,9 @@ def compare(text: str) -> dict:
     # ── BWT + RLE + Huffman ──
     bwt_rle_huff = bwt_rle_huffman_bits(text)
 
+    # ── BWT + MTF + RLE + Huffman (klasik bzip2) ──
+    bwt_mtf_rle_huff = bwt_mtf_rle_huffman_bits(text)
+
     # ── BWT + LZW ──
     bwt_lzw = bwt_lzw_bits(text)
 
@@ -577,7 +693,12 @@ def compare(text: str) -> dict:
         "BWT + RLE + Huffman": {
             "bits": bwt_rle_huff, "ratio": bwt_rle_huff / orig_bits,
             "bwt": True,
-            "note": "bzip2 tekniği: BWT kümeleme → RLE koşuları → Huffman",
+            "note": "BWT kümeleme → RLE koşuları → Huffman (MTF olmadan)",
+        },
+        "BWT + MTF + RLE + Huffman": {
+            "bits": bwt_mtf_rle_huff, "ratio": bwt_mtf_rle_huff / orig_bits,
+            "bwt": True,
+            "note": "Tam klasik bzip2 pipeline (MTF eklendi)",
         },
         "BWT + LZW": {
             "bits": bwt_lzw, "ratio": bwt_lzw / orig_bits,
