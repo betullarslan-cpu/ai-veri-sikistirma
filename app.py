@@ -30,11 +30,10 @@ from core.nn_selector import predict as nn_predict, train as nn_train
 # ─── Sayfa ayarı ───────────────────────────────────
 st.set_page_config(
     page_title="AI Sıkıştırma",
-    page_icon="🗜️",
     layout="wide",
 )
 
-st.title("🗜️ AI-Destekli Veri Sıkıştırma")
+st.title("AI-Destekli Veri Sıkıştırma")
 st.caption(
     "Klasik sıkıştırma algoritmalarını (Huffman, LZW, BWT) bir **sinir ağı** ile birleştirip "
     "her veri türünde otomatik en iyi yöntemi seçen sistem."
