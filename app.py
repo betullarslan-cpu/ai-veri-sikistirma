@@ -75,23 +75,38 @@ HAZIR_METINLER = {
     "📄 Türkiye tanıtım (doğal Türkçe)": (
         "Türkiye, Avrupa ve Asya kıtaları arasında köprü görevi gören eşsiz bir ülkedir. "
         "Zengin tarihi ve kültürel mirası ile her yıl milyonlarca turistin ziyaret ettiği bu ülke, "
-        "doğal güzellikleri bakımından da son derece dikkat çekicidir."
+        "doğal güzellikleri bakımından da son derece dikkat çekicidir. "
+        "İstanbul'un Boğaziçi'nden Kapadokya'nın peri bacalarına, Pamukkale'nin beyaz "
+        "travertenlerinden Ege kıyılarının antik kentlerine kadar pek çok eşsiz güzelliği "
+        "barındırmaktadır."
     ),
-    "🧬 DNA dizisi (küçük alfabe)": "ATCGATCGTTAACCGG" * 30,
-    "🔁 Tekrarlı pattern (BWT ideal)": "ABCABCABC" * 50,
-    "📊 JSON log dosyası (LZW ideal)":
-        '{"id":1,"msg":"ok"},'*30,
-    "🤖 Yapay zeka metni (akademik Türkçe)": (
+
+    "🧬 DNA dizisi (4 harfli alfabe)": "ATCGATCGTTAACCGGAATTCCGGATCGATCG" * 25,
+
+    "🔁 Tekrarlı pattern ABC (BWT ideal)": "ABCABCABCABCABC" * 40,
+
+    "📊 JSON log kayıtları (LZW ideal)":
+        '{"timestamp":"2026-01-15","level":"INFO","msg":"User login successful","userId":42},\n' * 25,
+
+    "🤖 Akademik teknoloji metni": (
         "Yapay zeka teknolojileri son yıllarda hızla gelişmektedir. "
-        "Derin öğrenme modelleri görüntü tanıma ve doğal dil işleme alanlarında "
-        "çığır açıcı sonuçlar elde etmiştir. Veri sıkıştırma alanında da "
-        "yapay zeka yaklaşımları artık klasik algoritmalarla yarışmaktadır. "
-    ) * 3,
-    "📰 Haber metni (formal Türkçe)": (
-        "İstanbul Teknik Üniversitesi araştırmacıları yeni bir sıkıştırma "
-        "algoritması geliştirdi. Profesör Ahmet Yılmaz yaptığı açıklamada "
-        "bu yöntemin gzip programından yüzde otuz daha iyi sonuç verdiğini söyledi. "
+        "Derin öğrenme modelleri görüntü tanıma, doğal dil işleme ve karar verme sistemlerinde "
+        "çığır açıcı sonuçlar elde etmiştir. Büyük dil modelleri olarak adlandırılan "
+        "Transformer mimarisi tabanlı sistemler, milyarlarca parametreyle eğitilmektedir. "
+        "Veri sıkıştırma alanında da yapay zeka yaklaşımları artık klasik algoritmalarla "
+        "rekabet eder hale gelmiştir. Sinir ağı tabanlı sıkıştırıcılar Shannon limiti yakınına ulaşmaktadır. "
     ) * 2,
+
+    "📰 Haber metni (formal Türkçe)": (
+        "İstanbul Teknik Üniversitesi araştırmacıları yeni bir sıkıştırma algoritması geliştirdi. "
+        "Profesör Ahmet Yılmaz yaptığı açıklamada bu yöntemin gzip programından yüzde otuz daha "
+        "iyi sonuç verdiğini söyledi. Çalışmanın detayları uluslararası bir konferansta sunulacak. "
+        "Geliştirilen yöntemin özellikle Türkçe metinlerde etkili olduğu belirtildi. "
+    ) * 2,
+
+    "🎲 Karışık alfasayısal (rastgele)":
+        "X7k2P9mQ3rN8sL4tW1yA6bV5cD0eF8gH2iJ7kM3nO9pR4sT6uV1xY8zA2bC5dE3fG7" * 8,
+
     "✍️ Kendi metnim (yazacağım)": "",
 }
 
@@ -112,11 +127,25 @@ with col_sel:
     elif secim == "✍️ Kendi metnim (yazacağım)":
         text = st.text_area("Metnini yaz/yapıştır:", height=180,
                             placeholder="Buraya kendi metnini yapıştır...",
-                            value="")
+                            value="",
+                            key="kendi_metin")
     else:
         text = HAZIR_METINLER[secim]
-        with st.expander("📝 Seçilen metni göster/düzenle", expanded=False):
-            text = st.text_area("", value=text, height=180, key="metin_edit")
+        # Key dinamik — her seçimde farklı key → session_state çakışmaz
+        # secim ismindeki özel karakterleri sade slug'a çevir
+        slug = "".join(c if c.isalnum() else "_" for c in secim)
+        with st.expander(f"📝 Seçilen metnin içeriği — {secim}", expanded=True):
+            st.info(
+                f"**Veri tipi:** {secim}  \n"
+                f"**Uzunluk:** {len(text):,} karakter · "
+                f"**Benzersiz karakter:** {len(set(text))} · "
+                f"**İlk 100 karakter:** `{text[:100]}{'...' if len(text)>100 else ''}`"
+            )
+            text = st.text_area(
+                "Metin (düzenleyebilirsin):",
+                value=text, height=180,
+                key=f"metin_{slug}",   # her seçim için farklı key
+            )
 
 with col_inp2:
     st.metric("Karakter", f"{len(text):,}")
