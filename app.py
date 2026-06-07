@@ -103,7 +103,7 @@ if len(text) > 8000:
 
 
 # UI yardımcı fonksiyonu artık core/ui_helpers.py'da
-from core.ui_helpers import goster_sikistirma_ciktisi
+from core.ui_helpers import goster_sikistirma_ciktisi, goster_randomness_testi
 
 
 # ─── Sekmeler — sadece gerekli olanlar ──────
@@ -397,6 +397,11 @@ BWT %{_nn['probabilities'].get('bwt',0)*100:.1f}
                 key="dl_huff",
                 help="Klasik Huffman — referans dosya. BWT versiyonuyla boyut farkını gör.",
             )
+
+            # ── Shannon Randomness Testi (Perfect compression = random noise) ──
+            st.markdown("---")
+            goster_randomness_testi(_bwt_out['bit_string'], "BWT+RLE+Huffman")
+
             with st.expander("💡 Bu sıkıştırılmış çıktı ne işe yarar?"):
                 _kazanc = (1 - _bin_size/_orig_byte) * 100
                 st.markdown(f"""
@@ -592,6 +597,37 @@ with tab1:
                         col_a.table({repr(ch): f"{f:.4f}" for ch, f in rows})
                         col_b.write("**AI tahmini**")
                         col_b.table({repr(ch): f"{ai_freq.get(ch, 0):.4f}" for ch, f in rows})
+
+                    # ─ Information formülü — Shannon'un -log₂(p) tanımı ─
+                    with st.expander("📐 Shannon Information Formülü — Her Karakter İçin"):
+                        st.markdown("""
+**Shannon (1948):** Bir karakterin **bilgi içeriği** olasılığının negatif logaritmasıdır:
+
+$$I(c) = -\\log_2 p(c) \\quad \\text{[bit]}$$
+
+- Sık karakterler **az bilgi** taşır (kısa Huffman kodu hak ederler)
+- Nadir karakterler **çok bilgi** taşır (uzun Huffman kodu)
+
+Aşağıda **her karakterin gerçek bilgi miktarı** ve Huffman'ın atadığı kod uzunluğu:
+                        """)
+                        rows_info = []
+                        for ch, freq in sorted(actual_freq.items(), key=lambda x: -x[1])[:12]:
+                            info_bits = -math.log2(freq) if freq > 0 else 0
+                            code_len = len(codes.get(ch, ""))
+                            verim = (info_bits / code_len * 100) if code_len else 0
+                            rows_info.append({
+                                "Karakter": repr(ch),
+                                "Olasılık p(c)": f"{freq:.4f}",
+                                "Information -log₂(p)": f"{info_bits:.2f} bit",
+                                "Huffman kod uzunluğu": f"{code_len} bit",
+                                "Verimlilik": f"%{verim:.0f}",
+                            })
+                        st.dataframe(rows_info, use_container_width=True, hide_index=True)
+                        st.caption(
+                            "📊 **Verimlilik %100'e ne kadar yakınsa, Huffman o kadar optimal.** "
+                            "Information **kesirli bit** verebilir (örn. 2.7 bit), Huffman ise "
+                            "her zaman **tam bit** atar — bu kayıp gerçek limit ile fark yaratır."
+                        )
 
                     # Günlüğe kaydet
                     diary = {"huffman": {
