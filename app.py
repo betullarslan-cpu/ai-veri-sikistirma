@@ -166,8 +166,7 @@ if len(text) > 8000:
     n_block = (len(text) + 7999) // 8000
     st.info(
         f"ℹ️ Metniniz **{len(text):,} karakter**. BWT modülümüz "
-        f"**{n_block} blok** halinde işliyor (her blok 8.000 karakter, bzip2 mantığı). "
-        f"Kayıpsız geri alma TÜM metin için garantilidir."
+        f"**{n_block} blok** halinde işliyor (her blok 8.000 karakter, bzip2 mantığı)."
     )
 
 
@@ -557,11 +556,15 @@ with tab1:
                 st.caption(f"Toplam **{len(_reverse)} prefix-free kod**.")
             cd1, cd2 = st.columns(2)
             with cd1:
-                st.markdown("**Orijinal metin:**")
-                st.code(text[:300] + ("..." if len(text) > 300 else ""), language=None)
+                st.markdown("**📝 Orijinal metin:**")
+                st.text_area("orijinal_huffman", value=text, height=280,
+                             disabled=True, label_visibility="collapsed",
+                             key="orig_huff_box")
             with cd2:
-                st.markdown("**Decode edilmiş metin:**")
-                st.code(_decoded[:300] + ("..." if len(_decoded) > 300 else ""), language=None)
+                st.markdown("**🔓 Decode edilmiş metin:**")
+                st.text_area("decode_huffman", value=_decoded, height=280,
+                             disabled=True, label_visibility="collapsed",
+                             key="dec_huff_box")
 
             if _kayipsiz:
                 st.success(
@@ -903,11 +906,15 @@ with tab2:
 
     cd_l1, cd_l2 = st.columns(2)
     with cd_l1:
-        st.markdown("**Orijinal metin:**")
-        st.code(text[:300] + ("..." if len(text) > 300 else ""), language=None)
+        st.markdown("**📝 Orijinal metin:**")
+        st.text_area("orig_lzw_label", value=text, height=280,
+                     disabled=True, label_visibility="collapsed",
+                     key="orig_lzw_box")
     with cd_l2:
-        st.markdown("**Decode edilmiş metin:**")
-        st.code(_lzw_decoded[:300] + ("..." if len(_lzw_decoded) > 300 else ""), language=None)
+        st.markdown("**🔓 Decode edilmiş metin:**")
+        st.text_area("dec_lzw_label", value=_lzw_decoded, height=280,
+                     disabled=True, label_visibility="collapsed",
+                     key="dec_lzw_box")
 
     if _lzw_kayipsiz:
         st.success(
@@ -1667,11 +1674,15 @@ with tab11:
 
     cd_b1, cd_b2 = st.columns(2)
     with cd_b1:
-        st.markdown("**Orijinal metin:**")
-        st.code(text[:300] + ("..." if len(text) > 300 else ""), language=None)
+        st.markdown("**📝 Orijinal metin:**")
+        st.text_area("orig_bwt_label", value=text, height=280,
+                     disabled=True, label_visibility="collapsed",
+                     key="orig_bwt_box")
     with cd_b2:
-        st.markdown("**Decode edilmiş metin:**")
-        st.code(_bwt_decoded[:300] + ("..." if len(_bwt_decoded) > 300 else ""), language=None)
+        st.markdown("**🔓 Decode edilmiş metin:**")
+        st.text_area("dec_bwt_label", value=_bwt_decoded, height=280,
+                     disabled=True, label_visibility="collapsed",
+                     key="dec_bwt_box")
 
     if _bwt_kayipsiz:
         st.success(
