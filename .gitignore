@@ -1,10 +1,13 @@
 # Python
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
+*.so
+.pytest_cache/
+
+# Virtual env
 .venv/
 venv/
-*.egg-info/
+env/
 
 # IDE
 .vscode/
@@ -14,12 +17,7 @@ venv/
 .DS_Store
 Thumbs.db
 
-# Streamlit
-.streamlit/secrets.toml
-
-# Local data / API keys
-.env
-*.key
-
-# Cache
-.pytest_cache/
+# Geçici dosyalar
+results.json
+*.tmp
+*.bak

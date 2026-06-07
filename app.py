@@ -15,18 +15,17 @@ import streamlit as st
 import plotly.graph_objects as go
 
 sys.path.insert(0, os.path.dirname(__file__))
+# Sıkıştırma algoritmaları (core/)
 from core.huffman import encode as huffman_encode, build_codes, HuffmanNode
-from core.lzw import compare as lzw_compare, build_ai_lzw_dict, lzw_encode
+from core.lzw import compare as lzw_compare
 from core.ai_engine import (
     predict_frequencies, refine_frequencies, kl_divergence,
     generate_lzw_dictionary,
 )
-from core.entropy import shannon_entropy, theoretical_min_bits, compression_efficiency, per_char_analysis
+from core.entropy import shannon_entropy, theoretical_min_bits, per_char_analysis
 from core.hybrid import hybrid_compress, train_from_corpus, smart_hybrid
-from core.bwt import compare as bwt_compare, bwt_stats, bwt_encode, rle_compress
-from core.nn_selector import predict as nn_predict, train as nn_train, extract_features
-from core.arithmetic import compare as arith_compare
-from PIL import Image
+from core.bwt import compare as bwt_compare, bwt_stats, bwt_encode
+from core.nn_selector import predict as nn_predict, train as nn_train
 
 # ─── Sayfa ayarı ───────────────────────────────────
 st.set_page_config(

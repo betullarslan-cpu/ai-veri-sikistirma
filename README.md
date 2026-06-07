@@ -111,31 +111,28 @@ pytest tests/ -v
 ```
 project_veri/
 ├── app.py                   # Streamlit arayüzü (8 sekme)
-├── core/
-│   ├── huffman.py           # Huffman + decode (kayıpsız garanti)
-│   ├── lzw.py               # LZW (Unicode/Türkçe destekli)
-│   ├── arithmetic.py        # Aritmetik kodlama
+├── core/                    # Tüm algoritmalar (9 modül)
+│   ├── huffman.py           # Huffman encode/decode
+│   ├── lzw.py               # LZW (Unicode + Türkçe)
 │   ├── bwt.py               # BWT + RLE + Huffman (bzip2 tekniği)
-│   ├── nn_selector.py       # MLP 3-sınıf seçici + feature importance
+│   ├── nn_selector.py       # MLP 3-sınıf + feature importance + CM
 │   ├── hybrid.py            # Akıllı Hibrit (NN + BWT post-check)
 │   ├── ai_engine.py         # Groq LLM entegrasyonu
 │   ├── entropy.py           # Shannon entropisi
 │   ├── benchmark.py         # gzip/bzip2/zlib/lzma karşılaştırması
 │   ├── corpus_freq.json     # Eğitilmiş Türkçe frekansları
 │   └── nn_model.pkl         # Eğitilmiş MLP modeli
-├── data/
-│   ├── large_turkish.txt    # 64K karakter Türkçe corpus
-│   ├── diverse_corpus.txt   # Karma veri tipleri
-│   └── turkce_dogal.txt     # Test metni
-├── tests/
-│   └── test_kayipsizlik.py  # 72 unit test
-├── ai_diary.json            # AI prompt geçmişi
+├── data/                    # Eğitim & test corpus'ları (6 dosya)
+├── tests/                   # 86 birim test
+│   ├── test_kayipsizlik.py  # 72 kayıpsızlık testi
+│   └── test_scaling.py      # 14 ölçeklenme testi
+├── ai_diary.json            # AI prompt geçmişi (30+ adım)
 ├── RAPOR.md                 # Akademik rapor
-├── SUNUM_YAPISI.md          # Sunum akışı
-├── PROJE_PLANI.md           # Süreç planı
+├── SUNUM.md                 # Marp slayt sunumu
+├── MIMARI.md                # Mermaid diyagramlar
+├── README.md
 ├── Dockerfile
-├── requirements.txt
-└── README.md
+└── requirements.txt
 ```
 
 ---
