@@ -71,40 +71,45 @@ with st.sidebar:
 
 # ─── Metin girişi ──────────────────────────────────
 # Hazır test metinleri (farklı tipler)
+def _yukle_data_dosyasi(yol: str) -> str:
+    """data/ klasöründen güvenli oku — yoksa boş döndür."""
+    tam_yol = os.path.join(os.path.dirname(__file__), yol)
+    if os.path.exists(tam_yol):
+        with open(tam_yol, "r", encoding="utf-8") as f:
+            return f.read()
+    return ""
+
+# data/ klasöründeki gerçek corpus dosyalarını yükle
+_d_turkce  = _yukle_data_dosyasi("data/turkce_dogal.txt")
+_d_sample  = _yukle_data_dosyasi("data/sample.txt")
+_d_large   = _yukle_data_dosyasi("data/large_turkish.txt")
+_d_diverse = _yukle_data_dosyasi("data/diverse_corpus.txt")
+
 HAZIR_METINLER = {
-    "📄 Türkiye tanıtım (doğal Türkçe)": (
-        "Türkiye, Avrupa ve Asya kıtaları arasında köprü görevi gören eşsiz bir ülkedir. "
-        "Zengin tarihi ve kültürel mirası ile her yıl milyonlarca turistin ziyaret ettiği bu ülke, "
-        "doğal güzellikleri bakımından da son derece dikkat çekicidir. "
-        "İstanbul'un Boğaziçi'nden Kapadokya'nın peri bacalarına, Pamukkale'nin beyaz "
-        "travertenlerinden Ege kıyılarının antik kentlerine kadar pek çok eşsiz güzelliği "
-        "barındırmaktadır."
-    ),
+    # ── 1. GERÇEK DATA DOSYALARI (data/ klasöründen) ──
+    f"📄 Türkçe Doğal Corpus (data/turkce_dogal.txt · {len(_d_turkce):,} kar.)":
+        _d_turkce or "[Dosya bulunamadı]",
 
-    "🧬 DNA dizisi (4 harfli alfabe)": "ATCGATCGTTAACCGGAATTCCGGATCGATCG" * 25,
+    f"🔁 Sample Tekrarlı (data/sample.txt · {len(_d_sample):,} kar.)":
+        _d_sample or "[Dosya bulunamadı]",
 
-    "🔁 Tekrarlı pattern ABC (BWT ideal)": "ABCABCABCABCABC" * 40,
+    f"🌍 Büyük Türkçe Corpus (data/large_turkish.txt · {len(_d_large):,} kar.)":
+        _d_large or "[Dosya bulunamadı]",
+
+    f"🎲 Karma Corpus (data/diverse_corpus.txt · {len(_d_diverse):,} kar.)":
+        _d_diverse or "[Dosya bulunamadı]",
+
+    # ── 2. SENTETİK TEST METİNLERİ ──
+    "🧬 DNA dizisi (4 harfli alfabe — BWT ideal)":
+        "ATCGATCGTTAACCGGAATTCCGGATCGATCG" * 25,
 
     "📊 JSON log kayıtları (LZW ideal)":
         '{"timestamp":"2026-01-15","level":"INFO","msg":"User login successful","userId":42},\n' * 25,
 
-    "🤖 Akademik teknoloji metni": (
-        "Yapay zeka teknolojileri son yıllarda hızla gelişmektedir. "
-        "Derin öğrenme modelleri görüntü tanıma, doğal dil işleme ve karar verme sistemlerinde "
-        "çığır açıcı sonuçlar elde etmiştir. Büyük dil modelleri olarak adlandırılan "
-        "Transformer mimarisi tabanlı sistemler, milyarlarca parametreyle eğitilmektedir. "
-        "Veri sıkıştırma alanında da yapay zeka yaklaşımları artık klasik algoritmalarla "
-        "rekabet eder hale gelmiştir. Sinir ağı tabanlı sıkıştırıcılar Shannon limiti yakınına ulaşmaktadır. "
-    ) * 2,
+    "🔢 Tekrarlı pattern ABC (BWT ideal)":
+        "ABCABCABCABCABC" * 40,
 
-    "📰 Haber metni (formal Türkçe)": (
-        "İstanbul Teknik Üniversitesi araştırmacıları yeni bir sıkıştırma algoritması geliştirdi. "
-        "Profesör Ahmet Yılmaz yaptığı açıklamada bu yöntemin gzip programından yüzde otuz daha "
-        "iyi sonuç verdiğini söyledi. Çalışmanın detayları uluslararası bir konferansta sunulacak. "
-        "Geliştirilen yöntemin özellikle Türkçe metinlerde etkili olduğu belirtildi. "
-    ) * 2,
-
-    "🎲 Karışık alfasayısal (rastgele)":
+    "🎯 Karışık alfasayısal (rastgele — Huffman ideal)":
         "X7k2P9mQ3rN8sL4tW1yA6bV5cD0eF8gH2iJ7kM3nO9pR4sT6uV1xY8zA2bC5dE3fG7" * 8,
 
     "✍️ Kendi metnim (yazacağım)": "",
