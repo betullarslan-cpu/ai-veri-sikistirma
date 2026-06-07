@@ -179,9 +179,4 @@ project_veri/
 4. Shannon, C. E. (1948). "A Mathematical Theory of Communication"
 5. Pedregosa et al. (2011). "Scikit-learn: Machine Learning in Python"
 
----
 
-## 👤 Yazar
-
-**Betül Arslan** — Yıldız Teknik Üniversitesi Bilgisayar Mühendisliği
-*Veri Sıkıştırma Dersi, Bahar 2026*
