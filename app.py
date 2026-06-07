@@ -1205,60 +1205,122 @@ daha gelişmiş algoritmalar (arithmetic coding + n-gram) gerekir.
 # SEKME 10: AI GÜNLÜĞÜ
 # ═══════════════════════════════════════════════════
 with tab10:
-    st.subheader("🤖 AI Günlüğü")
-    st.markdown("Proje boyunca AI'ya verilen promptlar ve alınan cevaplar")
+    st.subheader("🤖 AI Etkileşim Günlüğü")
+    st.caption("Proje sürecinde AI'ya verilen tüm promptlar ve alınan cevaplar.")
 
     diary_file = "ai_diary.json"
-    if os.path.exists(diary_file):
+    if not os.path.exists(diary_file):
+        st.info("Henüz AI günlüğü oluşmamış. AI sekmelerinde bir analiz çalıştırın.")
+    else:
         with open(diary_file) as f:
             diary = json.load(f)
 
-        st.metric("Toplam token kullanımı", f"{diary.get('toplam_token', 0):,}")
+        adimlar = diary.get("adimlar", [])
+        refl_adimlar = [a for a in adimlar if "yansima" in a]
+        normal_adimlar = [a for a in adimlar if "yansima" not in a]
 
-        for step in diary.get("adimlar", []):
-            with st.expander(f"Adım {step['adim']}: {step['hedeflenen_islem']}"):
+        # ── Özet metrikler ──
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Toplam Adım", f"{len(adimlar)}")
+        m2.metric("Reflektif Not", f"{len(refl_adimlar)}",
+                  help="Süreç değerlendirmesi içeren girişler")
+        m3.metric("Token Kullanımı", f"{diary.get('toplam_token', 0):,}",
+                  help="Toplam Groq LLM API token tüketimi")
+        m4.download_button(
+            "⬇ JSON İndir",
+            data=open(diary_file).read(),
+            file_name="ai_diary.json",
+            mime="application/json",
+            help="Rapora ek olarak teslim edilebilir",
+        )
+
+        st.markdown("---")
+
+        # ── Arama / filtre ──
+        col_s, col_t = st.columns([3, 1])
+        with col_s:
+            arama = st.text_input("🔍 Adımlar içinde ara",
+                                  placeholder="örn: BWT, Türkçe, hata, NN...")
+        with col_t:
+            tip_filtre = st.selectbox(
+                "Tip",
+                ["Hepsi", "Sadece reflektif", "Sadece klasik"],
+            )
+
+        # Filtre uygula
+        gosterilecek = adimlar
+        if tip_filtre == "Sadece reflektif":
+            gosterilecek = refl_adimlar
+        elif tip_filtre == "Sadece klasik":
+            gosterilecek = normal_adimlar
+        if arama:
+            arm = arama.lower()
+            gosterilecek = [
+                a for a in gosterilecek
+                if arm in a.get("hedeflenen_islem", "").lower()
+                or arm in a.get("verilen_prompt", "").lower()
+                or arm in a.get("sonuc", "").lower()
+                or arm in a.get("yansima", "").lower()
+            ]
+
+        st.caption(f"**{len(gosterilecek)}** adım gösteriliyor "
+                   f"(toplam {len(adimlar)} adımdan).")
+
+        # ── Adımları göster ──
+        for step in gosterilecek:
+            etiket = "🪞" if "yansima" in step else "💬"
+            with st.expander(
+                f"{etiket} Adım {step['adim']}: {step['hedeflenen_islem']}"
+            ):
                 col1, col2 = st.columns(2)
                 with col1:
-                    st.markdown("**Verilen Prompt:**")
-                    st.code(step["verilen_prompt"][:400], language=None)
+                    st.markdown("**Verilen Prompt**")
+                    st.code(step["verilen_prompt"][:500], language=None)
                 with col2:
-                    st.markdown("**AI Cevabı:**")
-                    st.code(step["ai_cevabi"][:400], language=None)
-                st.markdown(f"**Sorun:** {step['sorun']}")
-                st.markdown(f"**Sonuç:** {step['sonuc']}")
-    else:
-        st.info("Henüz AI günlüğü yok. Huffman veya LZW analizini çalıştır.")
+                    st.markdown("**AI Cevabı**")
+                    st.code(step["ai_cevabi"][:500], language=None)
+                st.markdown(
+                    f"**Sorun:** {step.get('sorun', '—')}  \n"
+                    f"**Sonuç:** {step.get('sonuc', '—')}"
+                )
+                if "yansima" in step:
+                    st.info(f"🪞 **Yansıma:** {step['yansima']}")
+                if step.get("token_kullanim"):
+                    st.caption(f"Token: {step['token_kullanim']}")
 
-    # Manuel ek adım
-    st.markdown("---")
-    st.markdown("**Manuel adım ekle (AI Günlüğüne)**")
-    col1, col2 = st.columns(2)
-    with col1:
-        m_hedef  = st.text_input("Hedeflenen işlem")
-        m_prompt = st.text_area("Verilen prompt", height=80)
-    with col2:
-        m_cevap  = st.text_area("AI cevabı / sorun", height=80)
-        m_sonuc  = st.text_input("Sonuç")
+    # ── Manuel ek (expander içinde — yer kaplamasın) ──
+    with st.expander("➕ Manuel adım ekle"):
+        col1, col2 = st.columns(2)
+        with col1:
+            m_hedef  = st.text_input("Hedeflenen işlem")
+            m_prompt = st.text_area("Verilen prompt", height=80)
+        with col2:
+            m_cevap  = st.text_area("AI cevabı / sorun", height=80)
+            m_sonuc  = st.text_input("Sonuç")
+        m_yansima = st.text_area("Yansıma (opsiyonel — reflektif not)", height=60)
 
-    if st.button("Adım Ekle"):
-        if os.path.exists(diary_file):
-            with open(diary_file) as f:
-                diary = json.load(f)
-        else:
-            diary = {"adimlar": [], "toplam_token": 0}
-        diary["adimlar"].append({
-            "adim": len(diary["adimlar"]) + 1,
-            "hedeflenen_islem": m_hedef,
-            "verilen_prompt": m_prompt,
-            "ai_cevabi": m_cevap,
-            "sorun": "Manuel giriş",
-            "sonuc": m_sonuc,
-            "token_kullanim": 0,
-        })
-        with open(diary_file, "w") as f:
-            json.dump(diary, f, ensure_ascii=False, indent=2)
-        st.success("Adım eklendi!")
-        st.rerun()
+        if st.button("Adım Ekle", key="add_step"):
+            if os.path.exists(diary_file):
+                with open(diary_file) as f:
+                    diary = json.load(f)
+            else:
+                diary = {"adimlar": [], "toplam_token": 0}
+            yeni_adim = {
+                "adim": len(diary["adimlar"]) + 1,
+                "hedeflenen_islem": m_hedef,
+                "verilen_prompt": m_prompt,
+                "ai_cevabi": m_cevap,
+                "sorun": "Manuel giriş",
+                "sonuc": m_sonuc,
+                "token_kullanim": 0,
+            }
+            if m_yansima:
+                yeni_adim["yansima"] = m_yansima
+            diary["adimlar"].append(yeni_adim)
+            with open(diary_file, "w") as f:
+                json.dump(diary, f, ensure_ascii=False, indent=2)
+            st.success("Adım eklendi!")
+            st.rerun()
 
 
 # ═══════════════════════════════════════════════════
