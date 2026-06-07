@@ -226,70 +226,40 @@ with tab0:
             "**Kısa çubuk = iyi sıkıştırma.**"
         )
 
-        # ═══════ ENDÜSTRİ STANDARTLARI KARŞILAŞTIRMASI ═══════
+        # ═══════ ENDÜSTRİ KARŞILAŞTIRMASI (sade tablo) ═══════
         st.markdown("---")
-        st.markdown("### 🏭 Endüstri Standartları Karşılaştırması")
-        st.caption("Bizim algoritmalarımız gzip, bzip2, zlib, lzma ile yan yana.")
+        _our_best = _bm["bizim_en_iyi_byte"]
+        _bzip = _bm["bzip2_byte"]
+        _fark = (_bzip - _our_best) / _bzip * 100
 
+        if _our_best <= _bzip:
+            st.markdown(
+                f"### 🏭 Endüstri Karşılaştırması "
+                f"<small>(bizim en iyi: **{_our_best:,} byte**, "
+                f"bzip2: **{_bzip:,} byte** → bizim **%{_fark:.1f} daha küçük** 🎉)</small>",
+                unsafe_allow_html=True,
+            )
+        else:
+            st.markdown(
+                f"### 🏭 Endüstri Karşılaştırması "
+                f"<small>(bizim en iyi: **{_our_best:,} byte**, "
+                f"bzip2: **{_bzip:,} byte** → bizim **%{-_fark:.1f} daha büyük**)</small>",
+                unsafe_allow_html=True,
+            )
+
+        # Tek tablo: hepsi yan yana, boyuta göre sıralı
         _ben_rows = []
-        for _alg, _d in _bm["endustri"].items():
-            if isinstance(_d, dict):
-                _ben_rows.append({
-                    "Algoritma": _alg.upper(),
-                    "Boyut (byte)": f"{_d['byte']:,}",
-                    "Oran": f"{_d['ratio']:.4f}",
-                    "Küçülme": f"%{_d['kucullme_pct']:.1f}",
-                    "Süre (ms)": f"{_d['sure_ms']:.2f}",
-                    "Tür": "🏭 Endüstri",
-                })
-        for _alg, _d in _bm["bizim"].items():
+        for _alg, _d in {**_bm["endustri"], **_bm["bizim"]}.items():
             if isinstance(_d, dict):
                 _ben_rows.append({
                     "Algoritma": _alg.replace("_", "+").upper(),
-                    "Boyut (byte)": f"{_d['byte']:,}",
-                    "Oran": f"{_d['ratio']:.4f}",
-                    "Küçülme": f"%{_d['kucullme_pct']:.1f}",
-                    "Süre (ms)": f"{_d['sure_ms']:.2f}",
-                    "Tür": "⭐ Bizim",
+                    "Byte":     f"{_d['byte']:,}",
+                    "Küçülme":  f"%{_d['kucullme_pct']:.1f}",
+                    "Süre":     f"{_d['sure_ms']:.2f} ms",
+                    "Tür":      "🏭" if _alg in _bm["endustri"] else "⭐",
                 })
-        # Boyuta göre sırala (küçük = iyi)
-        _ben_rows.sort(key=lambda r: int(r["Boyut (byte)"].replace(",", "")))
+        _ben_rows.sort(key=lambda r: int(r["Byte"].replace(",", "")))
         st.dataframe(_ben_rows, use_container_width=True, hide_index=True, height=320)
-
-        # Karşılaştırma grafiği
-        _ben_names = [r["Algoritma"] for r in _ben_rows]
-        _ben_bytes = [int(r["Boyut (byte)"].replace(",", "")) for r in _ben_rows]
-        _ben_colors = ["#FFD700" if "BWT" in n or "AKILLI" in n else
-                       "#00CC96" if "Bizim" in r["Tür"] else "#888"
-                       for n, r in zip(_ben_names, _ben_rows)]
-        fig_b = go.Figure(go.Bar(
-            x=_ben_names, y=_ben_bytes, marker_color=_ben_colors,
-            text=[f"{b:,}" for b in _ben_bytes], textposition="outside",
-        ))
-        fig_b.update_layout(
-            title="Sıkıştırma Sonrası Boyut (byte) — Düşük = İyi",
-            yaxis_title="Byte", height=380, showlegend=False,
-            margin=dict(t=40, b=80, l=40, r=10),
-        )
-        fig_b.update_xaxes(tickangle=-30)
-        st.plotly_chart(fig_b, use_container_width=True)
-
-        # Yorum
-        _our_best = _bm["bizim_en_iyi_byte"]
-        _bzip = _bm["bzip2_byte"]
-        if _our_best <= _bzip:
-            st.success(
-                f"🎉 **Bizim en iyi algoritmamız ({_our_best:,} byte) **bzip2'den ({_bzip:,} byte)** "
-                f"**%{(_bzip-_our_best)/_bzip*100:.1f} daha küçük!** "
-                f"Bu, BWT+RLE+Huffman implementasyonumuzun gerçek bzip2 ile yarışabildiğini gösteriyor."
-            )
-        else:
-            st.info(
-                f"📊 Bizim en iyi algoritmamız ({_our_best:,} byte) bzip2'den ({_bzip:,} byte) "
-                f"**%{(_our_best-_bzip)/_bzip*100:.1f} daha büyük.** "
-                f"Endüstri standartları yıllarca optimize edildi; bu bizim açık kaynak "
-                f"eğitim implementasyonumuz için iyi bir sonuç."
-            )
 
         # ── Kompakt tablo (2 sütun yan yana) ──
         cL, cR = st.columns(2)
