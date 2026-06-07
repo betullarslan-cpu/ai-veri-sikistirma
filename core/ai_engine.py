@@ -31,14 +31,28 @@ MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
 
 def _chat(system: str, user: str, max_tokens: int = 1024) -> Tuple[str, int]:
     client = _get_client()
-    response = client.chat.completions.create(
-        model=_get_model(),
-        messages=[
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
-        max_tokens=max_tokens,
-    )
+    try:
+        response = client.chat.completions.create(
+            model=_get_model(),
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+            max_tokens=max_tokens,
+        )
+    except Exception as e:
+        # Anlamli Turkce hata
+        msg = str(e).lower()
+        if "invalid api key" in msg or "401" in msg:
+            raise RuntimeError(
+                "❌ Groq API key gecersiz. Sol menudeki kutuya gecerli bir key girin.\n"
+                "Yeni key icin: https://console.groq.com/keys"
+            )
+        if "rate limit" in msg or "429" in msg:
+            raise RuntimeError("⏳ Groq rate limit asildi. Bir dakika bekleyip tekrar deneyin.")
+        if "connection" in msg or "network" in msg:
+            raise RuntimeError("🌐 Internet baglantisi yok veya Groq sunucularına ulasilamiyor.")
+        raise RuntimeError(f"Groq API hatasi: {e}")
     raw = response.choices[0].message.content.strip()
     tokens = response.usage.total_tokens if response.usage else 0
     return raw, tokens
