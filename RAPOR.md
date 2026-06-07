@@ -1,9 +1,6 @@
-# YILDIZ TEKNİK ÜNİVERSİTESİ
-## BİLGİSAYAR MÜHENDİSLİĞİ BÖLÜMÜ
-### VERİ SIKIŞTIRMA — DÖNEM PROJESİ RAPORU
 
 **Proje:** AI-Destekli Veri Sıkıştırma Sistemi
-**Tarih:** Haziran 2026
+
 **GitHub:** https://github.com/betullarslan-cpu/ai-veri-sikistirma
 **Canlı Demo:** https://huggingface.co/spaces/tien23/ai-veri-sikistirma
 
@@ -416,4 +413,4 @@ docker run -p 8501:8501 veri-sikistirma
 
 ---
 
-*Bu rapor Veri Sıkıştırma dersi dönem projesi kapsamında hazırlanmıştır.*
+
