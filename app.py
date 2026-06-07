@@ -410,11 +410,58 @@ with tab1:
                 key_suffix="huff_std",
             )
 
-            # ── DECODE: Sıkıştırılmış halini geri aç ──
-            st.markdown("### 🔓 Açma (Decompression) — Kayıpsızlık Kanıtı")
-            _decoded = _huff_decode(_h_out['bit_string'], _h_out['codes'])
-            _kayipsiz = (_decoded == text)
+            # ── DECODE: Adım adım sıkıştırmayı geri aç ──
+            st.markdown("### 🔓 Açma (Decompression) — Adım Adım Kayıpsızlık Kanıtı")
 
+            with st.expander("🔍 **Aşama 1 — Girdi:** Sıkıştırılmış bit dizisi", expanded=False):
+                st.code(_h_out['bit_string'][:200] + ("..." if len(_h_out['bit_string']) > 200 else ""))
+                st.caption(f"Toplam **{len(_h_out['bit_string']):,}** bit "
+                          f"({len(_h_out['byte_data']):,} byte binary).")
+
+            with st.expander("🔍 **Aşama 2 — Ters Huffman Tablosu** (kod → karakter)", expanded=False):
+                _reverse = {v: k for k, v in _h_out['codes'].items()}
+                # En kısa kodları göster (en sık karakterler)
+                _sorted_rev = sorted(_reverse.items(), key=lambda x: len(x[0]))
+                _tablo_rows = [
+                    {"Bit kodu": k, "Uzunluk": f"{len(k)} bit", "Karakter": repr(v)}
+                    for k, v in _sorted_rev[:15]
+                ]
+                st.dataframe(_tablo_rows, use_container_width=True, hide_index=True)
+                st.caption(f"Toplam **{len(_reverse)} kod** var (ilk 15 gösteriliyor). "
+                          f"Encode'da ağaçta kurduğumuz prefix-free kodlar.")
+
+            with st.expander("🔍 **Aşama 3 — Tampon (buffer) ile bit okuma**", expanded=False):
+                # İlk birkaç decode adımını görsel olarak göster
+                _adimlar = []
+                _buf = ""
+                _idx = 0
+                for _i, _bit in enumerate(_h_out['bit_string'][:200]):
+                    _buf += _bit
+                    if _buf in _reverse:
+                        _adimlar.append({
+                            "Adım": _idx + 1,
+                            "Okunan bit dizisi": _buf,
+                            "Eşleşen karakter": repr(_reverse[_buf]),
+                            "Kalan tampon": "(temizlendi)",
+                        })
+                        _buf = ""
+                        _idx += 1
+                        if _idx >= 12:
+                            break
+                st.dataframe(_adimlar, use_container_width=True, hide_index=True)
+                st.caption(
+                    "Bit-bit okuyup tampona ekliyoruz. Tampon Huffman kodlarından biriyle "
+                    "**eşleşince** o karakteri yazıp tamponu sıfırlıyoruz. Bu, ağaçta "
+                    "yapraktan köke giden tek yolun garantisidir."
+                )
+
+            with st.expander("🔍 **Aşama 4 — Decode edilmiş ham metin**", expanded=False):
+                _decoded = _huff_decode(_h_out['bit_string'], _h_out['codes'])
+                st.code(_decoded[:400] + ("..." if len(_decoded) > 400 else ""), language=None)
+                st.caption(f"Toplam **{len(_decoded):,}** karakter geri kurtarıldı.")
+
+            st.markdown("#### ✅ Aşama 5 — Doğrulama: Orijinal == Decode")
+            _kayipsiz = (_decoded == text)
             cd1, cd2 = st.columns(2)
             with cd1:
                 st.markdown("**Orijinal metin:**")
@@ -425,14 +472,15 @@ with tab1:
 
             if _kayipsiz:
                 st.success(
-                    f"✅ **KAYIPSIZ** — Sıkıştırılmış {len(_h_out['byte_data']):,} byte → "
-                    f"Açıldığında orijinal {len(text):,} karakter aynen geri geldi. "
-                    f"Tek bir karakter bile kaybolmadı."
+                    f"✅ **KAYIPSIZ DOĞRULANDI** — "
+                    f"{len(text):,} karakter → {len(_h_out['byte_data']):,} byte → "
+                    f"{len(_decoded):,} karakter (TAM AYNI). "
+                    f"Hash karşılaştırması: orijinal `{hash(text) & 0xffff:04x}` vs "
+                    f"decode `{hash(_decoded) & 0xffff:04x}` — **eşleşti**."
                 )
             else:
-                # Farkı bul
                 _fark = sum(1 for a, b in zip(text, _decoded) if a != b)
-                st.error(f"❌ Hata: {_fark} karakter farklı. Decode bozulmuş.")
+                st.error(f"❌ Hata: {_fark} karakter farklı.")
 
             st.markdown("---")
 
@@ -562,20 +610,73 @@ with tab2:
         len(text.encode("utf-8")), key_suffix="lzw_std",
     )
 
-    # ── DECODE: LZW'yi geri aç ──
-    st.markdown("### 🔓 Açma (Decompression) — Kayıpsızlık Kanıtı")
-    from core.lzw import lzw_decode as _lzw_dec
-    # initial_dict: encode'da kullandığımız aynı sözlük
-    _init_dict = {chr(i): i for i in range(256)}
-    for _ch in set(text):
-        if _ch not in _init_dict:
-            _init_dict[_ch] = len(_init_dict)
-    try:
-        _lzw_decoded = _lzw_dec(_codes_lzw, _init_dict)
-        _lzw_kayipsiz = (_lzw_decoded == text)
-    except Exception as _e:
-        _lzw_decoded = f"[Decode hatası: {_e}]"
-        _lzw_kayipsiz = False
+    # ── DECODE: Adım adım LZW'yi geri aç ──
+    st.markdown("### 🔓 Açma (Decompression) — Adım Adım Kayıpsızlık Kanıtı")
+
+    with st.expander("🔍 **Aşama 1 — Girdi:** LZW kod listesi", expanded=False):
+        _ilk_kodlar = _codes_lzw[:30]
+        st.code(str(_ilk_kodlar) + ("..." if len(_codes_lzw) > 30 else ""))
+        st.caption(f"Toplam **{len(_codes_lzw):,}** kod, her biri **{_bpc} bit**. "
+                  f"Standart 8-bit ASCII'ye göre {(1 - _bpc/8)*100:.1f}% daha az bit.")
+
+    with st.expander("🔍 **Aşama 2 — Başlangıç sözlüğü kuruluyor**", expanded=False):
+        # initial_dict: encode'da kullandığımız aynı sözlük
+        _init_dict = {chr(i): i for i in range(256)}
+        for _ch in set(text):
+            if _ch not in _init_dict:
+                _init_dict[_ch] = len(_init_dict)
+        st.caption(f"İlk **{len(_init_dict)}** giriş hazır: 256 standart ASCII + "
+                  f"**{len(_init_dict) - 256}** Türkçe karakter (ş, ğ, ü, ö, ç, ı...).")
+        # Türkçe karakter eşlemelerini göster
+        _tr_kars = [(chr(i), i) for i in range(256, min(len(_init_dict), 270))]
+        if _tr_kars:
+            _tr_rows = [{"Karakter": repr(ch), "Kod": str(c)} for ch, c in _tr_kars]
+            st.dataframe(_tr_rows, use_container_width=True, hide_index=True)
+
+    with st.expander("🔍 **Aşama 3 — Kod-kod decode (canlı sözlük büyütme)**", expanded=False):
+        # İlk 10 decode adımını simüle et
+        _sim_dict = dict(_init_dict)
+        _rev_sim = {v: k for k, v in _sim_dict.items()}
+        _next_code = len(_sim_dict)
+        _adimlar = []
+        _prev = None
+        for _i, _code in enumerate(_codes_lzw[:10]):
+            if _code in _rev_sim:
+                _entry = _rev_sim[_code]
+            elif _code == _next_code and _prev is not None:
+                _entry = _prev + _prev[0]
+            else:
+                _entry = "?"
+
+            _new_entry = ""
+            if _prev is not None:
+                _new_entry = _prev + _entry[0]
+                _rev_sim[_next_code] = _new_entry
+                _next_code += 1
+
+            _adimlar.append({
+                "Adım": _i + 1,
+                "Kod": _code,
+                "Sözlükten çıkan": repr(_entry),
+                "Sözlüğe eklenen": repr(_new_entry) if _new_entry else "—",
+                "Sözlük boyutu": _next_code,
+            })
+            _prev = _entry
+        st.dataframe(_adimlar, use_container_width=True, hide_index=True)
+        st.caption("LZW'nin sihri: decoder **encoder ile aynı patternleri** keşfeder "
+                  "(sözlük dosya başında gönderilmez). Her okunan kodda yeni bir pattern üretilir.")
+
+    with st.expander("🔍 **Aşama 4 — Decode edilmiş ham metin**", expanded=False):
+        from core.lzw import lzw_decode as _lzw_dec
+        try:
+            _lzw_decoded = _lzw_dec(_codes_lzw, _init_dict)
+        except Exception as _e:
+            _lzw_decoded = f"[Decode hatası: {_e}]"
+        st.code(_lzw_decoded[:400] + ("..." if len(_lzw_decoded) > 400 else ""), language=None)
+        st.caption(f"Toplam **{len(_lzw_decoded):,}** karakter geri kurtarıldı.")
+
+    st.markdown("#### ✅ Aşama 5 — Doğrulama: Orijinal == Decode")
+    _lzw_kayipsiz = (_lzw_decoded == text)
 
     cd_l1, cd_l2 = st.columns(2)
     with cd_l1:
@@ -587,14 +688,15 @@ with tab2:
 
     if _lzw_kayipsiz:
         st.success(
-            f"✅ **KAYIPSIZ** — {len(_codes_lzw):,} kod → orijinal metin aynen geri geldi."
+            f"✅ **KAYIPSIZ DOĞRULANDI** — "
+            f"{len(_codes_lzw):,} kod → {len(_lzw_decoded):,} karakter (TAM AYNI). "
+            f"Hash: orijinal `{hash(text) & 0xffff:04x}` vs decode `{hash(_lzw_decoded) & 0xffff:04x}` — **eşleşti**."
         )
     else:
         st.warning("⚠️ Decode kontrolünde fark var.")
 
-    with st.expander("ℹ️ LZW Kod Listesi (ilk 50)"):
+    with st.expander("ℹ️ Tüm LZW Kod Listesi (ilk 50)"):
         st.write([f"#{i}: code={c}" for i, c in enumerate(_codes_lzw[:50])])
-        st.caption(f"Toplam **{len(_codes_lzw):,} kod**, her biri **{_bpc} bit**.")
     st.markdown("---")
 
     n_words = st.slider("AI'nın ekleyeceği kelime/ifade sayısı (Groq)", 20, 200, 80)
@@ -1090,9 +1192,95 @@ with tab11:
         len(text.encode("utf-8")), key_suffix="bwt_rle_huff",
     )
 
-    # ── DECODE: BWT'yi geri aç ──
-    st.markdown("### 🔓 Açma (Decompression) — Kayıpsızlık Kanıtı")
-    _bwt_decoded = _bwt_dec(_bwt_enc['bwt'], _bwt_enc['orig_idx'])
+    # ── DECODE: Adım adım BWT'yi geri aç ──
+    st.markdown("### 🔓 Açma (Decompression) — Adım Adım Kayıpsızlık Kanıtı")
+    st.caption("BWT'nin geri çevrimi (LF mapping) — en zarif veri yapısı işlemlerinden biri.")
+
+    _bwt_str = _bwt_enc['bwt']
+    _orig_idx = _bwt_enc['orig_idx']
+
+    with st.expander("🔍 **Aşama 1 — Girdi:** BWT permüte metni + orijinal indeks", expanded=False):
+        st.code(_bwt_str[:150] + ("..." if len(_bwt_str) > 150 else ""))
+        st.caption(f"BWT uzunluğu: **{len(_bwt_str)}** karakter | "
+                  f"Orijinal indeks: **{_orig_idx}** "
+                  f"(bu, kodlamada gönderilen tek metadata).")
+
+    with st.expander("🔍 **Aşama 2 — Karakter rank'larını hesapla**", expanded=False):
+        from collections import Counter as _C
+        _seen = {}
+        _rank = []
+        for _ch in _bwt_str:
+            _rank.append(_seen.get(_ch, 0))
+            _seen[_ch] = _seen.get(_ch, 0) + 1
+        # İlk 15 karakterin rank'larını göster
+        _rank_rows = [
+            {"Pozisyon": i, "Karakter": repr(_bwt_str[i]), "Rank (kaçıncı kez)": _rank[i]}
+            for i in range(min(15, len(_bwt_str)))
+        ]
+        st.dataframe(_rank_rows, use_container_width=True, hide_index=True)
+        st.caption(
+            "Her karakter için **\"BWT'de kaçıncı kez göründü?\"** sorusunun cevabı. "
+            "Bu, LF mapping'in özüdür."
+        )
+
+    with st.expander("🔍 **Aşama 3 — Sıralı dizi (F sütunu) — başlangıç pozisyonları**", expanded=False):
+        _char_counts = _C(_bwt_str)
+        _starts = {}
+        _pos = 0
+        for _ch in sorted(_char_counts.keys()):
+            _starts[_ch] = _pos
+            _pos += _char_counts[_ch]
+        _start_rows = [
+            {"Karakter": repr(ch), "Toplam": str(_char_counts[ch]), "F'deki başlangıç": str(p)}
+            for ch, p in list(_starts.items())[:15]
+        ]
+        st.dataframe(_start_rows, use_container_width=True, hide_index=True)
+        st.caption(
+            "Eğer tüm BWT karakterleri sıralasaydık (F sütunu), her karakterin nerede "
+            "başladığını gösterir. Örnek: 'a' sıralı dizide pozisyon X'te başlar."
+        )
+
+    with st.expander("🔍 **Aşama 4 — LF Mapping kuruluyor**", expanded=False):
+        _lf = [_starts[_bwt_str[i]] + _rank[i] for i in range(len(_bwt_str))]
+        _lf_rows = [
+            {"i (L'deki pozisyon)": i,
+             "L[i] (karakter)": repr(_bwt_str[i]),
+             "LF[i] (F'deki konum)": _lf[i]}
+            for i in range(min(15, len(_bwt_str)))
+        ]
+        st.dataframe(_lf_rows, use_container_width=True, hide_index=True)
+        st.caption(
+            "**LF Mapping:** L'deki (BWT) i. konumdaki karakter, sıralı dizide (F) hangi "
+            "konumdadır? Bu eşleme **bijektif**tir — her karakterin tek bir LF eşi vardır. "
+            "Bu, dolambacın geri çevrilmesini sağlar."
+        )
+
+    with st.expander("🔍 **Aşama 5 — Orijinal metni geri kur (LF zinciri)**", expanded=False):
+        _result = []
+        _idx = _orig_idx
+        _adimlar = []
+        for _step in range(min(10, len(_bwt_str))):
+            _result.append(_bwt_str[_idx])
+            _adimlar.append({
+                "Adım": _step + 1,
+                "Mevcut idx": _idx,
+                "Eklenen karakter": repr(_bwt_str[_idx]),
+                "Sonraki idx (LF)": _lf[_idx],
+            })
+            _idx = _lf[_idx]
+        st.dataframe(_adimlar, use_container_width=True, hide_index=True)
+        st.caption(
+            "Orijinal indeksten başla, **LF[idx]** ile sıçra, gittiğin yerin karakterini yaz. "
+            "n iterasyonda metni terste kurar, en sonda ters çevir → orijinal!"
+        )
+
+    _bwt_decoded = _bwt_dec(_bwt_str, _orig_idx)
+
+    with st.expander("🔍 **Aşama 6 — Decode edilmiş ham metin**", expanded=False):
+        st.code(_bwt_decoded[:400] + ("..." if len(_bwt_decoded) > 400 else ""), language=None)
+        st.caption(f"Toplam **{len(_bwt_decoded):,}** karakter geri kurtarıldı.")
+
+    st.markdown("#### ✅ Aşama 7 — Doğrulama: Orijinal == Decode")
     _bwt_kayipsiz = (_bwt_decoded == text[:len(_bwt_decoded)])
 
     cd_b1, cd_b2 = st.columns(2)
@@ -1105,11 +1293,17 @@ with tab11:
 
     if _bwt_kayipsiz:
         st.success(
-            f"✅ **KAYIPSIZ** — Permütasyon başarıyla geri çevrildi. "
-            f"BWT decode → orijinal metin aynen geldi."
+            f"✅ **KAYIPSIZ DOĞRULANDI** — "
+            f"BWT permütasyonu + orijinal indeks ({_orig_idx}) yeterli. "
+            f"Hash: orijinal `{hash(text[:len(_bwt_decoded)]) & 0xffff:04x}` vs "
+            f"decode `{hash(_bwt_decoded) & 0xffff:04x}` — **eşleşti**."
         )
     else:
-        st.warning("⚠️ Decode kontrolünde fark var (uzun metinlerde MAX_BWT_LEN=8000 sınırından olabilir).")
+        st.warning(
+            f"⚠️ Decode kontrolünde fark var. Metin uzunluğu: orijinal {len(text)}, "
+            f"BWT decode {len(_bwt_decoded)} "
+            f"(uzun metinlerde MAX_BWT_LEN=8000 sınırından olabilir)."
+        )
 
     with st.expander("ℹ️ BWT iç bilgileri (permütasyon + RLE koşuları)"):
         st.caption(f"**BWT çıktısı (ilk 100 karakter):**")
