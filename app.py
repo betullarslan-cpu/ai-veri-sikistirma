@@ -909,7 +909,7 @@ with tab4:
         st.markdown("**🔁 Modeli Yeniden Eğit**")
         st.caption("Mevcut sentetik + corpus verisiyle CV-test'li yeniden eğitim yapar.")
         if st.button("Eğit (~10 saniye)", key="nn_train"):
-            with st.spinner("Sinir ağı eğitiliyor (1900+ örnek, 5-fold CV)..."):
+            with st.spinner("Sinir ağı eğitiliyor (2000+ örnek, 5-fold CV)..."):
                 r = nn_train(verbose=False)
             st.success(
                 f"✓ Hold-out: %{r['test_accuracy']*100:.1f} | "
@@ -917,6 +917,56 @@ with tab4:
                 f"{r['samples']:,} örnek"
             )
             st.caption(f"Sınıf dağılımı: {r['distribution']}")
+
+    # ── Feature Importance — Hangi özellik kararı belirliyor? ──
+    st.markdown("---")
+    st.markdown("### 🔍 Özellik Önem Analizi (Permutation Importance)")
+    st.caption(
+        "Sinir ağının her özelliğe ne kadar güvendiğini ölçer. Bir özelliği "
+        "rastgele karıştırıp doğruluğun ne kadar düştüğüne bakar."
+    )
+    if st.button("📊 Önem analizini başlat (~15 sn)", key="fi_btn"):
+        with st.spinner("Permutation importance hesaplanıyor..."):
+            from core.nn_selector import feature_importance
+            fi = feature_importance(n_repeats=5)
+        if "error" in fi:
+            st.error(fi["error"])
+        else:
+            # Bar grafiği
+            fig_fi = go.Figure(go.Bar(
+                x=fi["importances"],
+                y=fi["feature_names"],
+                orientation='h',
+                marker_color="#00CC96",
+                text=[f"{v:.3f}" for v in fi["importances"]],
+                textposition="outside",
+                error_x=dict(type='data', array=fi["stds"]),
+            ))
+            fig_fi.update_layout(
+                title="11 Özelliğin Karar Verme Etkisi",
+                xaxis_title="Önem skoru (büyük = kritik)",
+                height=420,
+                margin=dict(t=40, b=20, l=120, r=20),
+            )
+            st.plotly_chart(fig_fi, use_container_width=True)
+
+            # Top 3 önemli
+            st.success(
+                f"🥇 **En önemli 3 özellik:** "
+                f"{fi['feature_names'][0]} → "
+                f"{fi['feature_names'][1]} → "
+                f"{fi['feature_names'][2]}"
+            )
+            with st.expander("💡 Bu sonuç ne anlama geliyor?"):
+                st.markdown("""
+- **Yüksek önem (üstteki)**: Bu özellik olmadan model **doğruluk kaybeder**.
+  Mesela `entropi` yüksek skor aldıysa, NN entropiye bakıp karar veriyor demektir.
+- **Düşük önem (alttaki)**: Bu özellik az katkı sağlıyor — gelecekte kaldırılabilir.
+- **Negatif önem**: Özellik aslında yanıltıcı (nadir).
+
+**Hocaya gösterilebilir kanıt:** Bu grafik sinir ağının **kara kutu olmadığını**,
+hangi karakteristikleri kullandığını şeffaf gösteriyor.
+                """)
 
     with st.expander("📖 Nasıl çalışır?"):
         st.markdown("""

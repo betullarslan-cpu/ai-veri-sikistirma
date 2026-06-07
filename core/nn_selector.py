@@ -471,6 +471,45 @@ def train(corpus_path: str = None, verbose: bool = True) -> dict:
 # Tahmin
 # ─────────────────────────────────────────
 
+def feature_importance(n_repeats: int = 5) -> dict:
+    """
+    Permutation importance: Her özelliği rastgele karıştırıp doğruluk düşüşünü ölç.
+
+    Düşüş büyükse → özellik kararı belirleyici.
+    Düşüş küçükse → özellik az katkı sağlıyor.
+
+    Returns:
+        {"feature_names": [...], "importances": [...], "stds": [...]}
+    """
+    import numpy as np
+    from sklearn.inspection import permutation_importance
+
+    if not os.path.exists(MODEL_FILE):
+        return {"error": "Model henuz egitilmemis"}
+
+    with open(MODEL_FILE, "rb") as f:
+        bundle = pickle.load(f)
+
+    # Test verisi hazırla
+    X, y = build_dataset(verbose=False)
+    if len(X) == 0:
+        return {"error": "Veri olusturulamadi"}
+
+    Xs = bundle["scaler"].transform(X)
+    r = permutation_importance(
+        bundle["model"], Xs, y,
+        n_repeats=n_repeats, random_state=42, n_jobs=1,
+    )
+
+    # Sırala — büyükten küçüğe
+    idx = np.argsort(r.importances_mean)[::-1]
+    return {
+        "feature_names": [FEATURE_NAMES[i] for i in idx],
+        "importances":   [float(r.importances_mean[i]) for i in idx],
+        "stds":          [float(r.importances_std[i])  for i in idx],
+    }
+
+
 def predict(text: str) -> dict:
     # Model yoksa veya bozuksa (sklearn/numpy versiyon farkı) otomatik egit
     if not os.path.exists(MODEL_FILE):
