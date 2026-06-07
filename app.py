@@ -42,22 +42,23 @@ st.caption(
 
 # ─── Sidebar: API key + ayarlar ────────────────────
 with st.sidebar:
-    # Güvenlik: API key arayüzde GÖRÜNMEZ. value="" ile her açılışta boş.
-    # Kullanıcı kendisi yapıştırır, env var'a yansır.
-    # Demo/sunum ekran görüntüsünde key sızmaz.
+    # ── Güvenlik politikası ──
+    # 1. value="": her oturumda kutu boş başlar → ekran görüntüsünde sızmaz
+    # 2. type="password": yazılan key ekranda noktalı görünür
+    # 3. Her API çağrısı sonrası env'den silinir (ai_engine.py'da finally)
+    # → Kullanıcı her butona basışta key'i yeniden girer (max güvenlik)
     api_key = st.text_input(
-        "Groq API Key", type="password",
-        value="",  # ← her oturumda boş başlar, ekran görüntüsünde key görünmez
-        help="Sadece AI içeren sekmeler için gerekli. "
-             "console.groq.com → API Keys (ücretsiz). "
-             "Bu alan güvenlik için boş başlar — her oturumda yeniden girin.",
+        "🔑 Groq API Key (her kullanımda girilir)",
+        type="password",
+        value="",
+        help="🔐 GÜVENLİK: Bu key her AI çağrısından sonra otomatik silinir. "
+             "Her tıklamada yeniden girmeniz gerekir. "
+             "console.groq.com → API Keys (ücretsiz).",
         placeholder="gsk_...",
     )
     if api_key:
         os.environ["GROQ_API_KEY"] = api_key
-    elif os.environ.get("GROQ_API_KEY"):
-        # Env var dış kaynaktan geliyorsa kullan, ama sidebar'a yansıtma
-        api_key = os.environ.get("GROQ_API_KEY")
+        st.caption("✓ Key oturuma yüklendi (kullanım sonrası silinecek)")
 
     text_type = st.selectbox("Metin türü", ["Türkçe metin", "İngilizce metin", "Kod (Python)"])
 
