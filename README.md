@@ -51,32 +51,23 @@ graph TB
 
 ## 🎨 Tasarım Kararları (Süreç Yansıması)
 
-### 1. Neden Huffman + LZW + BWT? (Aritmetik değil)
+### 1. Neden Huffman + LZW + BWT? 
 **Karar:** 3 farklı tekniği aynı pipeline'da birleştirdim.
 **Gerekçe:** Tek başına hiçbir algoritma her veri tipinde iyi değil. Huffman karakter bazlı, LZW pattern bazlı, BWT yapısal düzen bazlı — birleştirince güçlü oluyor.
-**Alternatif:** Sadece aritmetik kodlama daha kolaydı ama yenilik içermezdi.
 
-### 2. Neden MLP? (Karar ağacı veya CNN değil)
-**Karar:** Scikit-learn MLPClassifier (3 gizli katman).
-**Gerekçe:** 11 numerik özellik için MLP yeterli; karar ağacı ezberlerdi, CNN ise aşırı karmaşıktı. Hızlı eğitim (~10 sn) + sklearn entegrasyonu kolay.
-**Alternatif:** Random Forest dene(yebilir)dik — eklenecek geliştirme.
 
-### 3. Neden 3 sınıf? (2 olabilirdi)
+### 2. Neden 3 sınıf? 
 **Karar:** Huffman/LZW/BWT.
 **Gerekçe:** BWT eklenince doğal Türkçe'de bile +%30 iyileşme geldi. 2 sınıf bu kazancı kaçırırdı.
 **Veri kanıtı:** 2.072 örnekte %47 BWT kazanıyor — yok sayılamaz.
 
-### 4. Neden Groq? (OpenAI/Claude değil)
-**Karar:** Groq LLaMA 3.3 70B.
-**Gerekçe:** Tamamen ücretsiz, kredi kartı istemiyor, hızlı (200 token/sn).
-**Alternatif denenen:** Gemini quota yetersizdi, Claude/OpenAI kart istedi.
 
-### 5. Neden Streamlit + Docker? (Flask veya Gradio değil)
+### 3. Neden Streamlit + Docker? 
 **Karar:** Streamlit (8 sekmeli arayüz) + Docker SDK (HuggingFace).
 **Gerekçe:** Veri bilimi için optimize, Plotly entegrasyonu hazır, prototip hızlı.
 **Sorun:** HuggingFace yeni arayüzde Streamlit SDK kaldırıldı → Docker'a geçtik.
 
-### 6. Neden BWT post-check? (Sadece NN yeterli sanılır)
+### 4. Neden BWT post-check? 
 **Karar:** Akıllı Hibrit'te NN seçtiği algoritmaya ek olarak BWT'yi de denedim.
 **Gerekçe:** NN %95.2 doğru, ama %5 yanılırsa kullanıcı suboptimal sonuç alır. Post-check ile **garanti** optimal.
 **Sonuç:** NN "Huffman" dese bile BWT küçükse o seçiliyor → asla standart Huffman'dan kötü olamaz.
