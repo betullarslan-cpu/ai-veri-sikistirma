@@ -263,23 +263,33 @@ def _build_huffman(freq_dict: dict) -> dict:
 # 4. Bit Hesaplamaları
 # ─────────────────────────────────────────────────────
 
-def bwt_huffman_bits(text: str) -> int:
-    """
-    BWT + Huffman (RLE olmadan).
-    BWT permüte ettiği için karakter frekansları aynı kalır
-    → tek başına Huffman kazanımı minimal, ama LZW için temel sağlar.
-    """
+def _bwt_huffman_bits_single(text: str) -> int:
+    """Tek blok için BWT+Huffman bit hesabı."""
     bwt, _ = bwt_encode(text)
     total = len(bwt)
     if total == 0:
         return 0
-
     freq = {ch: c / total for ch, c in Counter(bwt).items()}
     codes = _build_huffman(freq)
-
     compressed = sum(len(codes.get(ch, "0" * 16)) for ch in bwt)
-    overhead = len(codes) * 12  # tablo overhead
+    overhead = len(codes) * 12
     return compressed + overhead
+
+
+def bwt_huffman_bits(text: str) -> int:
+    """
+    BWT + Huffman (RLE olmadan) — TÜM metin için bit sayısı.
+
+    BLOKLU: 8000+ karakter metinler otomatik bloklara bölünür,
+    her bloğun bit sayısı toplanır.
+    """
+    if len(text) <= MAX_BWT_LEN:
+        return _bwt_huffman_bits_single(text)
+    # Bloklu hesap: her bloğun bit toplamı
+    total = 0
+    for i in range(0, len(text), MAX_BWT_LEN):
+        total += _bwt_huffman_bits_single(text[i:i + MAX_BWT_LEN])
+    return total
 
 
 def _bwt_rle_huffman_encode_single(text: str) -> dict:
@@ -404,50 +414,49 @@ def huffman_encode_bytes(text: str) -> dict:
     }
 
 
-def bwt_rle_huffman_bits(text: str) -> int:
-    """
-    BWT + RLE + Huffman — bzip2 yaklaşımı.
-
-    Teorik bit hesabı:
-      - Her (char, count) çifti için Huffman char kodu + Elias-gamma count kodu
-      - Uzun koşular → count büyük ama az tekrar → verimli
-    """
+def _bwt_rle_huffman_bits_single(text: str) -> int:
+    """Tek blok için BWT+RLE+Huffman bit hesabı."""
     bwt, orig_idx = bwt_encode(text)
     if not bwt:
         return 0
-
     runs = rle_compress(bwt)
     if not runs:
         return 0
-
-    # Karakter frekansları (RLE sonrası)
     char_freq = Counter(ch for ch, _ in runs)
     total_runs = len(runs)
     char_probs = {ch: c / total_runs for ch, c in char_freq.items()}
     codes = _build_huffman(char_probs)
-
     bits = 0
     for ch, count in runs:
-        # Char kodu
         bits += len(codes.get(ch, "0" * 16))
-        # Count kodu — Elias gamma: 2*floor(log2(count)) + 1 bit
         bits += 2 * int(math.log2(count)) + 1 if count > 0 else 1
-
-    # BWT indeks → ceil(log2(n)) bit
-    n = len(bwt)
-    bits += math.ceil(math.log2(n + 1))
-
-    # Huffman tablo overhead
+    bits += math.ceil(math.log2(len(bwt) + 1))
     bits += len(codes) * 12
-
     return bits
 
 
-def bwt_lzw_bits(text: str) -> int:
+def bwt_rle_huffman_bits(text: str) -> int:
     """
-    BWT + LZW.
-    BWT sonrası uzun tekrarlı koşular → LZW daha uzun pattern bulur → daha az kod.
+    BWT + RLE + Huffman bit sayısı — TÜM metin için (bzip2 yaklaşımı).
+
+    BLOKLU: 8000+ karakter metinler otomatik bloklara bölünür.
+    Her bloğun bit sayısı toplanır → tüm metnin gerçek bit sayısı.
+
+    Teorik bit hesabı (her blok için):
+      - Her (char, count) çifti için Huffman char kodu + Elias-gamma count kodu
+      - BWT indeks → ceil(log2(n)) bit
+      - Huffman tablo overhead → karakter sayısı × 12 bit
     """
+    if len(text) <= MAX_BWT_LEN:
+        return _bwt_rle_huffman_bits_single(text)
+    total = 0
+    for i in range(0, len(text), MAX_BWT_LEN):
+        total += _bwt_rle_huffman_bits_single(text[i:i + MAX_BWT_LEN])
+    return total
+
+
+def _bwt_lzw_bits_single(text: str) -> int:
+    """Tek blok için BWT+LZW bit hesabı (yardımcı, alttaki ana fonksiyondan çağrılır)."""
     bwt, _ = bwt_encode(text)
     if not bwt:
         return 0
@@ -478,6 +487,21 @@ def bwt_lzw_bits(text: str) -> int:
     return len(codes) * bits_per_code
 
 
+def bwt_lzw_bits(text: str) -> int:
+    """
+    BWT + LZW — TÜM metin için bit sayısı.
+
+    BLOKLU: 8000+ karakter metinler otomatik bloklara bölünür.
+    BWT sonrası uzun tekrarlı koşular → LZW daha uzun pattern bulur → daha az kod.
+    """
+    if len(text) <= MAX_BWT_LEN:
+        return _bwt_lzw_bits_single(text)
+    total = 0
+    for i in range(0, len(text), MAX_BWT_LEN):
+        total += _bwt_lzw_bits_single(text[i:i + MAX_BWT_LEN])
+    return total
+
+
 # ─────────────────────────────────────────────────────
 # 5. Karşılaştırma (Ana Fonksiyon)
 # ─────────────────────────────────────────────────────
@@ -490,11 +514,10 @@ def compare(text: str) -> dict:
         original_bits, results (dict), best, improvement_pct, ...
     }
     """
-    # NOT: compare() karşılaştırma için tek-blok BWT kullanır (hızlı analiz).
-    # Uzun metinde gerçek (kayıpsız) sıkıştırma için bwt_rle_huffman_encode()
-    # otomatik bloklu çalışır — UI bunu kullanır, kayıp yoktur.
-    if len(text) > MAX_BWT_LEN:
-        text = text[:MAX_BWT_LEN]
+    # NOT: compare() artık BLOKLU çalışır — uzun metnin TAMAMI analiz edilir.
+    # Her BWT varyantı (bwt_huffman_bits, bwt_rle_huffman_bits, bwt_lzw_bits)
+    # 8000+ karakterli metni otomatik bloklara bölüp toplam bit sayısını döner.
+    # Standart Huffman/LZW zaten tüm metinde çalışıyor.
 
     orig_bits = len(text) * 8
     if orig_bits == 0:
