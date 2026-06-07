@@ -33,9 +33,10 @@ def _chat(system: str, user: str, max_tokens: int = 1024) -> Tuple[str, int]:
     """
     Groq API'ye bir chat çağrısı yapar.
 
-    GÜVENLİK NOTU: Çağrı tamamlandıktan sonra GROQ_API_KEY env değişkeni
-    SİLİNİR. Bu sayede her API çağrısı için kullanıcının key'i yeniden
-    girmesi gerekir → sızma riski minimize edilir.
+    GÜVENLİK: API key sidebar'da value="" ile her oturumda boş başlar
+    (ekran görüntüsünde sızmaz). Key'i çağrı içinde silmiyoruz çünkü
+    bir buton tıklamasında birden fazla _chat çağrısı olabilir
+    (örn. predict_frequencies + refine_frequencies).
     """
     client = _get_client()
     try:
@@ -60,10 +61,6 @@ def _chat(system: str, user: str, max_tokens: int = 1024) -> Tuple[str, int]:
         if "connection" in msg or "network" in msg:
             raise RuntimeError("🌐 Internet baglantisi yok veya Groq sunucularına ulasilamiyor.")
         raise RuntimeError(f"Groq API hatasi: {e}")
-    finally:
-        # Güvenlik: Her çağrıdan sonra key env'den silinir
-        # → kullanıcı bir sonraki çağrı için yeniden girmek zorunda
-        os.environ.pop("GROQ_API_KEY", None)
     raw = response.choices[0].message.content.strip()
     tokens = response.usage.total_tokens if response.usage else 0
     return raw, tokens
