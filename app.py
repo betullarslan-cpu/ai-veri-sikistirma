@@ -83,6 +83,73 @@ if len(text) < 10:
     st.warning("En az 10 karakter girin.")
     st.stop()
 
+
+# ─── Yardımcı: Sıkıştırılmış çıktıyı ekrana göster ───
+def goster_sikistirma_ciktisi(algoritma_adi: str, bit_string: str,
+                               byte_data: bytes, orig_byte: int,
+                               key_suffix: str = ""):
+    """
+    Sıkıştırılmış çıktıyı 4 farklı görünümle ekranda gösterir:
+    1) Binary (ilk 320 bit)
+    2) Hexadecimal (ilk 80 byte)
+    3) Boyut karşılaştırması
+    4) Download butonu
+    """
+    if not bit_string:
+        return
+    total_bits = len(bit_string)
+    bin_size   = len(byte_data)
+    kucullme   = (1 - bin_size/orig_byte) * 100 if orig_byte else 0
+
+    st.markdown(f"### 💾 Sıkıştırılmış Çıktı — *{algoritma_adi}*")
+
+    # Boyut karşılaştırma metrikleri
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Orijinal (text)", f"{orig_byte:,} byte")
+    c2.metric("Sıkışmış (binary)", f"{bin_size:,} byte",
+              delta=f"-%{kucullme:.1f}", delta_color="off")
+    c3.metric("Toplam bit", f"{total_bits:,}")
+    c4.metric("Karakter başı", f"{total_bits/orig_byte if orig_byte else 0:.2f} bit",
+              help="Standart 8 bit/karaktere göre kıyas")
+
+    # 2 sütun: binary + hex
+    cb, ch = st.columns(2)
+    with cb:
+        st.markdown("**🔢 Binary (ilk 320 bit)**")
+        preview = bit_string[:320]
+        # 8'erli grupla
+        formatted = " ".join(preview[i:i+8] for i in range(0, len(preview), 8))
+        st.code(formatted + ("..." if total_bits > 320 else ""), language=None)
+
+    with ch:
+        st.markdown("**🔣 Hexadecimal (ilk 80 byte)**")
+        hex_preview = byte_data[:80].hex(" ").upper()
+        # 16'lı grupla (her satırda 16 byte = 48 char + 15 boşluk = 47 char)
+        lines = []
+        hb = byte_data[:80].hex().upper()
+        for i in range(0, len(hb), 32):
+            chunk = hb[i:i+32]
+            line = " ".join(chunk[j:j+2] for j in range(0, len(chunk), 2))
+            lines.append(line)
+        st.code("\n".join(lines) + ("\n..." if bin_size > 80 else ""), language=None)
+
+    # Tam binary expander (uzun metin için)
+    if total_bits > 320:
+        with st.expander(f"📜 Tam binary dizisini göster ({total_bits:,} bit)"):
+            # 64 bitlik bloklar halinde
+            blocks = [bit_string[i:i+64] for i in range(0, len(bit_string), 64)]
+            st.code("\n".join(blocks[:50]) + ("\n... (kalanı indir)" if len(blocks) > 50 else ""))
+
+    # Download butonu
+    st.download_button(
+        f"⬇ {algoritma_adi} sıkıştırılmış (.bin) — {bin_size:,} byte",
+        data=byte_data,
+        file_name=f"sikistirilmis_{key_suffix}.bin",
+        mime="application/octet-stream",
+        key=f"dl_{key_suffix}",
+    )
+
+
 # ─── Sekmeler — sadece gerekli olanlar ──────
 tab0, tab1, tab2, tab4, tab6, tab9, tab11, tab10 = st.tabs([
     "🚀 Hızlı Özet",
@@ -333,6 +400,16 @@ with tab1:
                 overhead = len(codes) * 12
                 total_std = comp_bits + overhead
 
+            # ── SIKIŞTIRILMIŞ ÇIKTI (Standart Huffman) ──
+            from core.bwt import huffman_encode_bytes as _huff_enc
+            _h_out = _huff_enc(text)
+            goster_sikistirma_ciktisi(
+                "Standart Huffman", _h_out['bit_string'],
+                _h_out['byte_data'], len(text.encode('utf-8')),
+                key_suffix="huff_std",
+            )
+            st.markdown("---")
+
             # AI Huffman
             with st.spinner("AI frekans tahmini yapılıyor (Groq)..."):
                 total_chars = len(text)
@@ -427,7 +504,43 @@ with tab2:
         "bu sayede daha erken ve daha uzun eşleşmeler elde edilir."
     )
 
-    n_words = st.slider("AI'nın ekleyeceği kelime/ifade sayısı", 20, 200, 80)
+    # ── Standart LZW sıkıştırılmış çıktı (her zaman göster) ──
+    with st.spinner("LZW ile sıkıştırma yapılıyor..."):
+        import math as _math
+        _dict = {chr(i): i for i in range(256)}
+        for _ch in set(text):
+            if _ch not in _dict:
+                _dict[_ch] = len(_dict)
+        _nxt = len(_dict)
+        _codes_lzw = []
+        _w = ""
+        for _c in text:
+            _wc = _w + _c
+            if _wc in _dict:
+                _w = _wc
+            else:
+                _codes_lzw.append(_dict[_w])
+                _dict[_wc] = _nxt
+                _nxt += 1
+                _w = _c
+        if _w:
+            _codes_lzw.append(_dict[_w])
+
+        _bpc = _math.ceil(_math.log2(max(len(_dict), 2)))
+        _bit_str = "".join(format(c, f"0{_bpc}b") for c in _codes_lzw)
+        _padded = _bit_str + "0" * ((8 - len(_bit_str) % 8) % 8)
+        _byte_data = bytes(int(_padded[i:i+8], 2) for i in range(0, len(_padded), 8))
+
+    goster_sikistirma_ciktisi(
+        "Standart LZW", _bit_str, _byte_data,
+        len(text.encode("utf-8")), key_suffix="lzw_std",
+    )
+    with st.expander("ℹ️ LZW Kod Listesi (ilk 50)"):
+        st.write([f"#{i}: code={c}" for i, c in enumerate(_codes_lzw[:50])])
+        st.caption(f"Toplam **{len(_codes_lzw):,} kod**, her biri **{_bpc} bit**.")
+    st.markdown("---")
+
+    n_words = st.slider("AI'nın ekleyeceği kelime/ifade sayısı (Groq)", 20, 200, 80)
 
     if st.button("▶ LZW Analizi Başlat", key="lzw"):
         if not api_key:
@@ -907,6 +1020,26 @@ with tab11:
     col_bwt1.info("**Adım 1 — BWT**\nBenzer karakterleri gruplar")
     col_bwt2.info("**Adım 2 — RLE**\nTekrarlı koşuları kısaltır")
     col_bwt3.info("**Adım 3 — Huffman**\nOptimal bit kodlaması")
+
+    st.markdown("---")
+
+    # ── BWT+RLE+Huffman Sıkıştırılmış çıktı ──
+    from core.bwt import bwt_rle_huffman_encode as _bwtrle
+    with st.spinner("BWT+RLE+Huffman ile sıkıştırılıyor..."):
+        _bwt_enc = _bwtrle(text)
+    goster_sikistirma_ciktisi(
+        "BWT + RLE + Huffman (bzip2 tekniği)",
+        _bwt_enc['bit_string'], _bwt_enc['byte_data'],
+        len(text.encode("utf-8")), key_suffix="bwt_rle_huff",
+    )
+    with st.expander("ℹ️ BWT iç bilgileri (permütasyon + RLE koşuları)"):
+        st.caption(f"**BWT çıktısı (ilk 100 karakter):**")
+        st.code(_bwt_enc['bwt'][:100] + ("..." if len(_bwt_enc['bwt']) > 100 else ""))
+        st.caption(f"**Orijinal indeks:** {_bwt_enc['orig_idx']} "
+                   f"(decode için gerekli)")
+        st.caption(f"**RLE koşuları (ilk 20):**")
+        st.write(_bwt_enc['runs'][:20])
+        st.caption(f"Toplam **{len(_bwt_enc['runs']):,}** koşu, **{len(_bwt_enc['codes'])} farklı karakter**.")
 
     st.markdown("---")
 
