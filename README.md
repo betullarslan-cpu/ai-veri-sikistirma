@@ -10,101 +10,188 @@ pinned: false
 
 # 🗜️ AI Destekli Veri Sıkıştırma
 
-Yıldız Teknik Üniversitesi — Veri Sıkıştırma Dönem Projesi
+> **Yıldız Teknik Üniversitesi — Veri Sıkıştırma Dönem Projesi**
 
-Klasik sıkıştırma algoritmalarını (Huffman, LZW, Aritmetik Kodlama, BWT) **yapay zeka ile optimize eden** Streamlit uygulaması.
+Klasik sıkıştırma algoritmalarını (Huffman, LZW, BWT) bir **sinir ağı** ile birleştirip
+veri türüne göre otomatik en iyi yöntemi seçen Streamlit uygulaması.
 
-## 🎯 Özellikler
+🌐 **Canlı Demo:** https://huggingface.co/spaces/tien23/ai-veri-sikistirma
 
-### Algoritmalar
-- **Huffman** + AI frekans tahmini (tablo overhead'i kaldırır)
-- **LZW** + AI sözlük (Groq'tan en sık kelimeler)
-- **Aritmetik Kodlama** + AI olasılık modeli (Shannon sınırına yakın)
-- **BWT + RLE + Huffman** (bzip2 tekniği — en güçlü sonuç)
-- **Corpus Huffman** (Türkçe karakter frekanslarından öğrenilmiş)
+---
 
-### Yapay Zeka Bileşenleri
-- **🔬 Sinir Ağı (MLP 32→16→8)** — Veri tipine göre en iyi algoritmayı seçer
-  - 3 sınıf: Huffman / LZW / BWT
-  - 11 özellik (entropi, run-length, bigram, alfabe boyutu vb.)
-  - Hold-out doğruluk: **%95.2** | 5-fold CV: **%91.7 ± %1.8**
-  - 2.072 örnekle eğitildi (sentetik + 4 corpus)
-- **Akıllı Hibrit** — NN seçer + BWT post-check (asla standart Huffman'dan kötü olmaz)
-- **Groq LLM** entegrasyonu (frekans tahmini, sözlük üretimi)
-- **OCR + Sıkıştırma** (görüntüden metin çıkar → sıkıştır)
-- **AI Görüntü Sıkıştırma** (önem haritası → bölgesel kalite)
+## 🎯 Öne Çıkan Sonuçlar
 
-## 📊 Sonuçlar
+| Metrik | Değer |
+|--------|-------|
+| **Sinir Ağı Doğruluk** | %95.2 hold-out · %91.7 CV |
+| **En İyi Sıkıştırma** | %96.9 küçülme (tekrarlı veri) |
+| **Doğal Türkçe** | %58.3 küçülme (BWT+RLE+Huffman) |
+| **bzip2'ye Yakınlık** | Bazı metinlerde **bzip2'den iyi** |
+| **Unit Test** | 72/72 kayıpsızlık testi ✅ |
 
-| Veri Türü | Standart Huffman | Akıllı Hibrit (BWT) | İyileşme |
-|---|---|---|---|
-| Tekrarlı veri | %78.2 küçülme | **%96.9 küçülme** | +%85.9 |
-| DNA dizisi | %73.8 küçülme | **%94.1 küçülme** | +%77.5 |
-| JSON log | %60.7 küçülme | **%94.7 küçülme** | +%86.5 |
-| Doğal Türkçe | %37.1 küçülme | **%38.7 küçülme** | +%2.5 |
+---
 
-## 🚀 Çalıştırma
+## 🏗️ Sistem Mimarisi
 
+```mermaid
+graph TB
+    A[Kullanıcı Metni] --> B[Özellik Çıkarımı 11D]
+    B --> C{Sinir Ağı MLP 32→16→8}
+    C -->|Huffman| D[Corpus Huffman]
+    C -->|LZW| E[LZW + AI Sözlük]
+    C -->|BWT| F[BWT + RLE + Huffman]
+    D --> G[BWT Post-Check]
+    E --> G
+    F --> G
+    G --> H[En Küçük Çıktı]
+    H --> I[Binary .bin Dosyası]
+```
+
+---
+
+## 🎨 Tasarım Kararları (Süreç Yansıması)
+
+### 1. Neden Huffman + LZW + BWT? (Aritmetik değil)
+**Karar:** 3 farklı tekniği aynı pipeline'da birleştirdim.
+**Gerekçe:** Tek başına hiçbir algoritma her veri tipinde iyi değil. Huffman karakter bazlı, LZW pattern bazlı, BWT yapısal düzen bazlı — birleştirince güçlü oluyor.
+**Alternatif:** Sadece aritmetik kodlama daha kolaydı ama yenilik içermezdi.
+
+### 2. Neden MLP? (Karar ağacı veya CNN değil)
+**Karar:** Scikit-learn MLPClassifier (3 gizli katman).
+**Gerekçe:** 11 numerik özellik için MLP yeterli; karar ağacı ezberlerdi, CNN ise aşırı karmaşıktı. Hızlı eğitim (~10 sn) + sklearn entegrasyonu kolay.
+**Alternatif:** Random Forest dene(yebilir)dik — eklenecek geliştirme.
+
+### 3. Neden 3 sınıf? (2 olabilirdi)
+**Karar:** Huffman/LZW/BWT.
+**Gerekçe:** BWT eklenince doğal Türkçe'de bile +%30 iyileşme geldi. 2 sınıf bu kazancı kaçırırdı.
+**Veri kanıtı:** 2.072 örnekte %47 BWT kazanıyor — yok sayılamaz.
+
+### 4. Neden Groq? (OpenAI/Claude değil)
+**Karar:** Groq LLaMA 3.3 70B.
+**Gerekçe:** Tamamen ücretsiz, kredi kartı istemiyor, hızlı (200 token/sn).
+**Alternatif denenen:** Gemini quota yetersizdi, Claude/OpenAI kart istedi.
+
+### 5. Neden Streamlit + Docker? (Flask veya Gradio değil)
+**Karar:** Streamlit (8 sekmeli arayüz) + Docker SDK (HuggingFace).
+**Gerekçe:** Veri bilimi için optimize, Plotly entegrasyonu hazır, prototip hızlı.
+**Sorun:** HuggingFace yeni arayüzde Streamlit SDK kaldırıldı → Docker'a geçtik.
+
+### 6. Neden BWT post-check? (Sadece NN yeterli sanılır)
+**Karar:** Akıllı Hibrit'te NN seçtiği algoritmaya ek olarak BWT'yi de denedim.
+**Gerekçe:** NN %95.2 doğru, ama %5 yanılırsa kullanıcı suboptimal sonuç alır. Post-check ile **garanti** optimal.
+**Sonuç:** NN "Huffman" dese bile BWT küçükse o seçiliyor → asla standart Huffman'dan kötü olamaz.
+
+---
+
+## ⚙️ Çalıştırma
+
+### Yerel
 ```bash
 pip install -r requirements.txt
 streamlit run app.py
 ```
 
-Tarayıcıda http://localhost:8501 açılır.
+### Docker
+```bash
+docker build -t veri-sikistirma .
+docker run -p 8501:8501 veri-sikistirma
+```
 
-### Groq API key (opsiyonel)
-AI özellikleri için ücretsiz key: https://console.groq.com/keys
-Sol sidebar'dan gir veya `GROQ_API_KEY` env var olarak ayarla.
+### Testler
+```bash
+pip install pytest
+pytest tests/ -v
+# 72 kayıpsızlık testi çalışır
+```
+
+---
 
 ## 📁 Proje Yapısı
 
 ```
 project_veri/
-├── app.py                  # Streamlit arayüzü (12 sekme)
+├── app.py                   # Streamlit arayüzü (8 sekme)
 ├── core/
-│   ├── huffman.py          # Huffman kodlama
-│   ├── lzw.py              # LZW sıkıştırma (Unicode destekli)
-│   ├── arithmetic.py       # Aritmetik kodlama + AI olasılık
-│   ├── bwt.py              # BWT + RLE + Huffman (bzip2 tekniği)
-│   ├── nn_selector.py      # Sinir ağı (MLP 3-sınıf)
-│   ├── hybrid.py           # Akıllı hibrit + corpus eğitimi
-│   ├── ai_engine.py        # Groq API entegrasyonu
-│   ├── entropy.py          # Shannon entropisi
-│   ├── selector.py         # AI tabanlı algoritma seçici
-│   ├── image_compress.py   # AI önem haritası + bölgesel JPEG
-│   ├── ocr_compress.py     # Görüntü → metin → sıkıştırma
-│   ├── corpus_freq.json    # Eğitilmiş Türkçe frekans tablosu
-│   └── nn_model.pkl        # Eğitilmiş sinir ağı modeli
+│   ├── huffman.py           # Huffman + decode (kayıpsız garanti)
+│   ├── lzw.py               # LZW (Unicode/Türkçe destekli)
+│   ├── arithmetic.py        # Aritmetik kodlama
+│   ├── bwt.py               # BWT + RLE + Huffman (bzip2 tekniği)
+│   ├── nn_selector.py       # MLP 3-sınıf seçici + feature importance
+│   ├── hybrid.py            # Akıllı Hibrit (NN + BWT post-check)
+│   ├── ai_engine.py         # Groq LLM entegrasyonu
+│   ├── entropy.py           # Shannon entropisi
+│   ├── benchmark.py         # gzip/bzip2/zlib/lzma karşılaştırması
+│   ├── corpus_freq.json     # Eğitilmiş Türkçe frekansları
+│   └── nn_model.pkl         # Eğitilmiş MLP modeli
 ├── data/
-│   ├── large_turkish.txt   # 64K karakter Türkçe corpus
-│   ├── diverse_corpus.txt  # Çeşitli veri tipleri
-│   └── turkce_dogal.txt    # Test metni
-├── ai_diary.json           # AI prompt geçmişi (proje şartı)
+│   ├── large_turkish.txt    # 64K karakter Türkçe corpus
+│   ├── diverse_corpus.txt   # Karma veri tipleri
+│   └── turkce_dogal.txt     # Test metni
+├── tests/
+│   └── test_kayipsizlik.py  # 72 unit test
+├── ai_diary.json            # AI prompt geçmişi
+├── RAPOR.md                 # Akademik rapor
+├── SUNUM_YAPISI.md          # Sunum akışı
+├── PROJE_PLANI.md           # Süreç planı
+├── Dockerfile
 ├── requirements.txt
 └── README.md
 ```
 
-## 🧠 Sinir Ağı Eğitimi
+---
 
-Model, 2.072 örnekle 5-fold cross-validation ile eğitildi:
+## 🧠 Sinir Ağı Detayları
 
-- **Sentetik veriler:** Tekrarlı desenler, DNA, log, JSON, rastgele metin
-- **Corpus parçaları:** Türkçe metinler farklı uzunluklarda
-- **Etiket:** Her örnek için 3 algoritmadan en az bit kullananı
+**Mimari:** MLP `11 → 32 → 16 → 8 → 3`
 
-Ezber engellemek için:
-- L2 regularizasyon (alpha=1e-3)
-- Erken durdurma (early stopping)
-- Hold-out test seti (modelin görmediği)
+**Özellikler (11):**
+1. Shannon entropisi
+2. Benzersiz karakter oranı
+3. Top-3 karakter yoğunluğu
+4. Boşluk oranı
+5. Türkçe karakter oranı
+6. Run-length ortalaması
+7. Rakam oranı
+8. Büyük harf oranı
+9. Bigram entropisi
+10. Maksimum koşu oranı
+11. Alfabe boyutu (log₂)
+
+**En önemli 3 özellik** (permutation importance):
+- Benzersiz oran (0.25)
+- Bigram entropisi (0.18)
+- Alfabe boyutu (0.10)
+
+**Eğitim:**
+- 2.357 örnek (sentetik + corpus, 14 kategori)
+- L2 regularizasyon, early stopping
+- StratifiedKFold 5-fold cross-validation
+- Hold-out test seti (%20)
+
+---
+
+## 📊 Endüstri Karşılaştırması
+
+| Algoritma | Tipik Doğal Türkçe (920 byte) | Süre |
+|-----------|-------------------------------|------|
+| gzip -9 | 107 byte (%88.4 küçülme) | 0.06 ms |
+| zlib -9 | 95 byte (%89.7 küçülme) | 0.01 ms |
+| **bwt_rle_huffman** | **123 byte (%86.6 küçülme)** | 0.56 ms |
+| **Akıllı Hibrit** | 162 byte (%82.4 küçülme) | ~3 ms |
+
+---
 
 ## 📚 Kaynaklar
 
-- Burrows-Wheeler Transform: https://en.wikipedia.org/wiki/Burrows%E2%80%93Wheeler_transform
-- Huffman Coding: Cormen et al., "Introduction to Algorithms"
-- LZW: Welch (1984), "A Technique for High-Performance Data Compression"
-- Groq API: https://groq.com
+1. Huffman, D. A. (1952). "A Method for the Construction of Minimum-Redundancy Codes"
+2. Welch, T. A. (1984). "A Technique for High-Performance Data Compression"
+3. Burrows, M. & Wheeler, D. J. (1994). "A block-sorting lossless data compression algorithm"
+4. Shannon, C. E. (1948). "A Mathematical Theory of Communication"
+5. Pedregosa et al. (2011). "Scikit-learn: Machine Learning in Python"
+
+---
 
 ## 👤 Yazar
 
-Yıldız Teknik Üniversitesi — Bilgisayar Mühendisliği
-Veri Sıkıştırma Dersi, Bahar 2026
+**Betül Arslan** — Yıldız Teknik Üniversitesi Bilgisayar Mühendisliği
+*Veri Sıkıştırma Dersi, Bahar 2026*

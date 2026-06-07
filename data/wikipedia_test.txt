@@ -1,0 +1,23 @@
+Yıldız Teknik Üniversitesi, Türkiye'nin önde gelen devlet üniversitelerinden biridir. 1911 yılında Kondüktör Mekteb-i Âlîsi adıyla kurulan üniversite, Türkiye'nin en köklü teknik eğitim kurumlarındandır. İstanbul'un Yıldız semtinde bulunan ana kampüsü, tarihi yapıları ve modern eğitim olanaklarıyla dikkat çekmektedir.
+
+Bilgisayar Mühendisliği bölümü, üniversitenin en çok tercih edilen programlarından biridir. Bölümde yapay zeka, veri yapıları, algoritma analizi, işletim sistemleri, ağ programlama, veritabanı yönetimi ve yazılım mühendisliği gibi temel dersler verilmektedir. Lisans programının yanı sıra yüksek lisans ve doktora programları da bulunmaktadır.
+
+Veri sıkıştırma alanı, bilgisayar mühendisliğinin temel araştırma konularından biridir. Sıkıştırma algoritmaları iki ana kategoriye ayrılır: kayıplı ve kayıpsız. Kayıpsız algoritmalar orijinal verinin tam olarak geri kurtarılmasını sağlarken, kayıplı algoritmalar bilgi kaybı kabul ederek daha yüksek sıkıştırma oranları elde eder. Metin dosyaları, programlar ve veritabanları gibi kritik veriler için kayıpsız sıkıştırma tercih edilir.
+
+Huffman kodlaması 1952 yılında David Huffman tarafından MIT'de öğrenciyken geliştirilmiştir. Bu yöntem, frekansa dayalı bir kodlama tekniği olup karakter başına ortalama bit sayısını en aza indirmeyi hedefler. Sıkça kullanılan karakterlere kısa, nadir karakterlere uzun bit dizileri atayarak çalışır. Huffman ağacı adı verilen ikili ağaç yapısı, kodlama tablosunu temsil eder.
+
+LZW algoritması, Lempel, Ziv ve Welch'in 1984 yılında yayımladıkları çalışmadan adını alır. Sözlük tabanlı bir kayıpsız sıkıştırma yöntemidir. Algoritma, metin içindeki tekrarlayan dizileri tespit ederek bunlara sözlükte yer açar ve daha sonraki geçişlerde bu dizileri kısa kodlarla değiştirir. GIF görüntü formatı ve UNIX compress aracı LZW kullanmaktadır.
+
+Burrows-Wheeler dönüşümü 1994 yılında Burrows ve Wheeler tarafından geliştirilmiştir. Bu yöntem doğrudan sıkıştırma yapmaz; benzer karakterleri yan yana getiren bir permütasyon uygular. Bu permütasyon, Run-Length Encoding ve Huffman gibi sonraki algoritmaların çok daha verimli çalışmasını sağlar. bzip2 programı, BWT temelli sıkıştırma yapan en yaygın araçtır.
+
+Yapay zeka teknolojileri son yıllarda hızlı bir gelişim göstermektedir. Derin öğrenme modelleri, doğal dil işleme, görüntü tanıma ve karar verme sistemlerinde devrim yaratmıştır. Veri sıkıştırma alanında da yapay zeka uygulamaları artmaktadır. Sinir ağları, klasik algoritmaların hangi veri tipinde daha verimli olacağını tahmin edebilir. Bu sayede otomatik algoritma seçimi mümkün olur.
+
+Türkçe metin işleme, özellikle karakter kodlama açısından bazı zorluklar içerir. Türkçeye özgü ş, ğ, ü, ö, ç, ı karakterleri Unicode standardında temsil edilir. ASCII tabanlı eski sistemler bu karakterleri doğru işleyemez. Modern sıkıştırma algoritmalarının Türkçe metinlerle çalışabilmesi için UTF-8 kodlamasının doğru ele alınması gerekir.
+
+Bilgi teorisinin temellerini atan Claude Shannon, 1948 yılında ünlü makalesi "A Mathematical Theory of Communication" ile veri sıkıştırmanın matematiksel sınırlarını belirlemiştir. Shannon entropisi, bir kaynağın üretebileceği en az ortalama bit sayısını tanımlar. Hiçbir kayıpsız sıkıştırma algoritması bu sınırın altına inemez. Pratik algoritmalar bu teorik sınıra ne kadar yakın yaklaşırsa o kadar verimli kabul edilir.
+
+Modern sıkıştırma araçları genellikle birden fazla tekniği bir araya getirir. gzip ve zlib LZ77 ve Huffman'ı birleştirir. bzip2 BWT, Move-to-Front, Run-Length ve Huffman'ı kullanır. zstd hızlı sıkıştırma için LZ77 varyantı kullanır. xz ve lzma yüksek sıkıştırma oranı için karmaşık modeller kullanır. Her aracın güçlü ve zayıf olduğu veri tipleri vardır.
+
+Endüstride sıkıştırma algoritmalarının seçimi genellikle veri tipi, dosya boyutu ve performans gereksinimlerine göre yapılır. Web içerikleri için gzip, arşivleme için bzip2 veya xz, hızlı erişim gereken durumlar için lz4 veya zstd tercih edilir. Yeni nesil yapay zeka destekli sıkıştırma sistemleri ise tek bir araç ile tüm bu tercihleri otomatikleştirmeyi hedeflemektedir.
+
+Bu projede klasik algoritmalar (Huffman, LZW, BWT+RLE+Huffman) ile yapay zeka tekniklerinin (sinir ağı tabanlı algoritma seçimi, LLM tabanlı frekans tahmini) birleştirilmesi amaçlanmıştır. Sistem, kullanıcıdan aldığı metin için en uygun algoritmayı otomatik olarak seçer ve sıkıştırılmış çıktıyı üretir. Aynı zamanda decode aşamasında kayıpsızlık garantisini doğrulamak için orijinal ve geri kurtarılmış metni karşılaştırır.

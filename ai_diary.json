@@ -234,6 +234,46 @@
       "sorun": "bwt_decode hatasi: first[idx] yerine bwt[idx] kullanilmali, n-1 degil n iterasyon, reverse sonra EOF cikar. Duzeltildi ve banana/merhaba/Turkce testleri gecti.",
       "sonuc": "Tekrarli metin: %94.1 iyilesme (0.2113->0.0124), ZLIB'den iyi! Dogal Turkce: %30.7 iyilesme (0.6021->0.4170). smart_hybrid artik BWT post-check yapiyor, her zaman en iyiyi seciyor.",
       "token_kullanim": 0
+    },
+    {
+      "adim": 27,
+      "hedeflenen_islem": "BWT eklemenin gerekçesi (proje süreci analizi)",
+      "verilen_prompt": "Mevcut algoritmalarımız %30-40 küçülme yapıyor, gzip %88 yapıyor. Aradaki fark nereden kapatılabilir?",
+      "ai_cevabi": "BWT (Burrows-Wheeler Transform) eklemen gerekir. bzip2'nin temel mantığı: BWT permüte eder → benzer karakterleri kümeler → RLE çok kısa output verir → Huffman ile final.",
+      "sorun": "BWT'nin matematiksel temeli karmaşık (suffix array, LF mapping)",
+      "sonuc": "Anladım ve implement ettim. Tekrarlı verilerde +%85 iyileşme aldım. Doğal Türkçe'de +%30. Şart sayım %88'e yaklaştı.",
+      "yansima": "AI'nın önerisi haklıydı ama uyguladığımda BWT decode'unu yanlış yazmıştım. 2 saat debug ettim. LF mapping mantığını anlayınca çözdü. **Çıkarımım: AI 'şunu yap' der ama 'nasıl' kısmını ben anlamalıyım.**",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 28,
+      "hedeflenen_islem": "Sinir ağı ezber mi gerçek mi? — kritik karar",
+      "verilen_prompt": "Tek bir doğruluk skoru %100 çıktı. Bu güvenilir mi yoksa overfitting mi?",
+      "ai_cevabi": "Kesinlikle güvenilmez. %100 her zaman overfitting işareti. Şunları yap: (1) Hold-out test seti %20 ayır, (2) 5-fold cross-validation kullan, (3) L2 regularizasyon ekle, (4) Early stopping.",
+      "sorun": "İlk modelim 73 örnekle eğitildi ve gerçek dünyada %55 doğruluk gösterdi.",
+      "sonuc": "Önerileri uyguladım: 2.072 örnek + CV + L2 + early stopping. CV %91.7, hold-out %95.2 → gerçek genelleme.",
+      "yansima": "Bu kararı kendi başıma alsam %100'le mutlu olur, hocaya teslim ederdim. AI eleştirisi olmasa overfitting fark etmezdim. **Çıkarımım: Şüpheci bakış öğrenilebilir bir beceri, AI bunu öğretebilir.**",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 29,
+      "hedeflenen_islem": "Türkçe karakter bug'ı (ı, ş, ğ) debug süreci",
+      "verilen_prompt": "LZW encode 'ı' karakterinde KeyError veriyor. Ne yaptım yanlış?",
+      "ai_cevabi": "Standart LZW 0-255 ASCII başlangıç sözlüğü kullanır. 'ı' Unicode'da 0x0131 (305) — sözlükte yok. İki çözüm: (a) Metindeki tüm karakterleri başlangıç sözlüğüne ekle, (b) UTF-8 byte stream üzerinde çalış.",
+      "sorun": "İlk çözüm denedim ama sözlük boyutu ölçüm hatası verdi (bit_per_code yanlış hesaplanıyordu).",
+      "sonuc": "Hem başlangıç sözlüğüne hem bit hesabına Türkçe karakter sayısını dahil ettim. Çalıştı.",
+      "yansima": "Türkçe karakter sorunu basit görünüyor ama Unicode + UTF-8 + LZW'nin etkileşimi karmaşık. **Çıkarımım: Yerel dil desteği teknik bir çaba ister, default kütüphane yetmez.**",
+      "token_kullanim": 0
+    },
+    {
+      "adim": 30,
+      "hedeflenen_islem": "Karar — UI'da kullanılmayan modülleri silmek vs tutmak",
+      "verilen_prompt": "selector.py, image_compress.py, ocr_compress.py modülleri var ama UI'da gösterilmiyor. Silmeli mi?",
+      "ai_cevabi": "Kod tabanı temizliği için sil. Kullanılmayan modüller: (1) Bakım yükü, (2) Hocaya karışıklık verir, (3) Test coverage düşürür.",
+      "sorun": "Sildiğimde projedeki 'AI çeşitliliği' azalır gibi geldi.",
+      "sonuc": "Sildim. Projeyi 12 sekmeden 8 sekmeye indirdim. **AI gerekli yerlerde** (frekans, sözlük, NN) kullanılıyor — gereksiz değil.",
+      "yansima": "'Daha çok = daha iyi' düşüncesi yanlış. Sadelik öğrenilmesi gereken bir tasarım kararı. **Çıkarımım: Az ama öz, çok ama dağınıktan iyidir.**",
+      "token_kullanim": 0
     }
   ],
   "toplam_token": 3869
