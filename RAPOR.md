@@ -379,7 +379,31 @@ To quantify the gap between iid Shannon entropy and contextual entropy, we evalu
 
 The substantial gap between iid (4.68 bpc) and trigram (2.74 bpc) entropy motivates future investigation into context-aware coding (e.g., arithmetic coding with n-gram models). Shannon's classical estimate for English (~1.3 bpc) [8] suggests further improvement is achievable through deeper conditional modeling.
 
-### F. Feature Importance Analysis
+### F. Confusion Matrix Visualization
+
+Beyond aggregate accuracy metrics, the confusion matrix (Fig. 3) reveals the per-class behavior of the MLP selector. The matrix is computed on the hold-out test set.
+
+```mermaid
+%%{init: {'theme':'base'}}%%
+flowchart LR
+    subgraph Confusion["Confusion Matrix (Hold-out)"]
+        H[Huffman<br/>187 / 0 / 16<br/>recall: 92.1%]
+        L[LZW<br/>0 / 7 / 0<br/>recall: 100%]
+        B[BWT<br/>5 / 0 / 201<br/>recall: 97.6%]
+    end
+```
+
+**Table VI-Add.** Numeric confusion matrix (rows: ground-truth, columns: predicted).
+
+|              | Huffman | LZW | BWT | Recall |
+|--------------|---------|-----|-----|--------|
+| **Huffman**  | 187     | 0   | 16  | 92.1%  |
+| **LZW**      | 0       | 7   | 0   | **100%** |
+| **BWT**      | 5       | 0   | 201 | 97.6%  |
+
+The off-diagonal elements correspond to misclassifications: 16 Huffman-optimal instances were predicted as BWT (typically short texts with small alphabets), and 5 BWT-optimal instances were predicted as Huffman (instances with uniform character distributions). Importantly, the LZW class—despite being the smallest in cardinality—achieves perfect recall, suggesting that the discriminating features (low bigram entropy + high whitespace ratio) reliably identify LZW-optimal regimes.
+
+### G. Feature Importance Analysis
 
 We compute permutation feature importance [15] to quantify the relative contribution of each input feature to MLP predictions:
 
@@ -396,7 +420,27 @@ We compute permutation feature importance [15] to quantify the relative contribu
 
 The dominance of unique character ratio and bigram entropy is consistent with established compression theory: low alphabet diversity and high lexical repetition strongly indicate suitability for BWT-based or dictionary-based compression.
 
-### G. Comprehensive Timing Analysis
+**Visual representation** (horizontal bar chart, ASCII):
+
+```
+Unique character ratio  ████████████████████████ 0.247  ⭐
+Bigram entropy          ██████████████████ 0.183       ⭐
+log₂|Σ_T|               ██████████ 0.096               ⭐
+Mean run-length         ████████ 0.082
+Turkish char ratio      ██████ 0.058
+Shannon entropy         ████ 0.042
+Max run-length ratio    ████ 0.038
+Top-3 mass              ██ 0.024
+Whitespace ratio        ██ 0.018
+Uppercase ratio         █ 0.012
+Digit ratio             ▌ 0.008
+                        └─────────────────┘
+                        0.00   0.10   0.20   0.30
+```
+
+Fig. 4. Permutation feature importance (bar lengths proportional to importance scores).
+
+### H. Comprehensive Timing Analysis
 
 To characterize the latency–compression trade-off across all evaluated algorithms, we conduct a unified timing benchmark on a 693-character Turkish prose sample (756 bytes UTF-8). All measurements were obtained on the same hardware (MacBook, Python 3.11) using `time.perf_counter()` with single-run measurements.
 
@@ -428,7 +472,73 @@ Key observations:
 
 5. **Latency–compression frontier:** No single algorithm dominates on both axes. zlib offers fast compression with strong ratio; BWT+RLE+Huffman matches bzip2's compression with comparable speed; Smart Hybrid prioritizes optimal compression at the cost of selection latency.
 
-### H. Unit Test Coverage
+### I. AI Interaction Log Analysis
+
+To support transparency and reproducibility, every AI-related interaction during system development was recorded in a structured JSON log (`ai_diary.json`). Each entry captures the target task, the prompt issued, the LLM response, identified issues, the final outcome, and—for academic verification entries—the relevant literature citation. Table VII summarizes the corpus of interactions.
+
+**Table VII.** Composition of the AI interaction log (`ai_diary.json`, 42 entries total).
+
+| Category | Symbol | Count | Description |
+|----------|--------|-------|-------------|
+| Classical AI interaction | 💬 | 26 | Standard prompt–response pairs during development |
+| Reflective process note | 🪞 | 16 | Self-reflection entries documenting decision rationale |
+| Academic verification | 📚 | 12 | Entries with explicit literature cross-reference |
+| Total tokens consumed | — | 3,869 | Aggregated across 26 Groq API calls |
+
+**Table VIII.** Distribution of academic verification entries by source category.
+
+| Source Category | Citations | Representative Sources |
+|-----------------|-----------|------------------------|
+| Compression algorithms | 5 | Sayood §3.2; Cover & Thomas §5.6; Welch 1984; Salomon §6.13; Burrows–Wheeler 1994 |
+| BWT pipeline | 2 | Burrows–Wheeler 1994; Salomon §8.5 (×2) |
+| Information theory | 4 | Shannon 1948; Shannon 1951; Cover & Thomas §2.1; MacKay §4.5, §6.2 |
+| Machine learning | 4 | Goodfellow §6.3, §5.3; Bishop §5.1; Hastie §7.10 |
+| Distance metrics | 2 | Kullback–Leibler 1951; Cover & Thomas §2.3 |
+| Algorithm selection | 2 | Rice 1976; Kotthoff 2014 |
+| Model interpretation | 2 | Breiman 2001; Molnar §8.5 |
+
+**Verification methodology:** For each algorithmic component, we cross-referenced our implementation against the cited literature. This process surfaced four implementation defects detected through unit testing:
+
+1. **JSON parsing failure** in LLM dictionary responses (markdown code-block wrapping). Resolution: robust JSON parser with bracket matching.
+2. **`KeyError` on Turkish characters** in LZW. Resolution: dynamic alphabet extension per equation (6), aligned with [14, §6.13].
+3. **Incorrect LF mapping** in initial BWT decode. Resolution: manual trace of the LF formula; corrected per [4].
+4. **8,000-character BWT bottleneck**. Resolution: block-wise decomposition per equation (7), aligned with [14, §8.5].
+
+### J. Workflow Diagram
+
+The end-to-end inference workflow is illustrated below (Mermaid format, rendered natively in GitHub).
+
+```mermaid
+flowchart LR
+    A[Input Text T] --> B[Feature Extraction φ T]
+    B --> C{MLP Classifier f θ}
+    C -->|Huffman| D[Huffman Encode]
+    C -->|LZW| E[LZW + AI Dict]
+    C -->|BWT| F[BWT + MTF + RLE + Huffman]
+    D --> G{BWT Post-Check}
+    E --> G
+    F --> G
+    G -->|min select| H[Output Binary]
+    H --> I[Verification: encode→decode hash check]
+```
+
+Fig. 2. End-to-end compression workflow with no-regret hybrid selection.
+
+### K. Dataset Statistics
+
+**Table IX.** Distribution of training data by source and oracle-labeled class.
+
+| Source | Characters | Huffman | LZW | BWT | Total |
+|--------|-----------|---------|-----|-----|-------|
+| `large_turkish.txt` | 64,240 | 287 | 8 | 421 | 716 |
+| `diverse_corpus.txt` | 37,853 | 198 | 7 | 318 | 523 |
+| `turkce_dogal.txt` | 5,260 | 42 | 1 | 67 | 110 |
+| Synthetic (14 categories) | varied | 401 | 19 | 588 | 1,008 |
+| **Total** | **107,353+** | **928** | **35** | **1,394** | **2,357** |
+
+The class distribution reflects the dominance of structurally complex text in our corpus: BWT optimality accounts for 59% of instances, Huffman for 39%, and LZW for the remaining 1%. The LZW class is the smallest because its optimality region (repetitive lexical patterns at moderate alphabet size) overlaps substantially with BWT's optimality region in our corpus.
+
+### L. Unit Test Coverage
 
 The test suite comprises 100 unit tests organized as follows:
 
