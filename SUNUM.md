@@ -17,7 +17,7 @@ style: |
 <!-- _class: lead -->
 <!-- _paginate: false -->
 
-# 🗜️ AI-Destekli Veri Sıkıştırma
+#  AI-Destekli Veri Sıkıştırma
 
 ## Klasik Algoritmaların Sinir Ağı Tabanlı Otomatik Seçimi ve LLM Tabanlı Akıllı Sözlük Üretimi
 
@@ -457,28 +457,25 @@ $ pytest tests/ -v
 
 # 📈 Sonuç
 
-## Hocanın PDF'inde 2 Kriter → ✅ ✅
 
-### ✅ En İyi Performans
+
+###  En İyi Performans
 - 6 veri tipinde +%2.5 ile +%86.5 iyileşme
 - Bzip2'den %36.5 daha küçük (kısa metinde)
 - 100 birim test, sıfır kayıp
 
-### ✅ En İyi AI Entegrasyonu
+###  En İyi AI Entegrasyonu
 - 🤖 LLM ile LZW sözlüğü
 - 3-sınıflı NN algoritma seçici
 - Akıllı Hibrit + 42 AI günlüğü
 - 12 akademik doğrulama
 
-## Sistem **canlı çalışıyor**, **akademik temelli**, **kayıpsız garanti** ⚡
+
 
 ---
 
 <!-- _class: lead -->
 
-# 🎓 Teşekkürler
-
-## Sorularınız?
 
 <br>
 
