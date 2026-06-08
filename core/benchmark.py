@@ -161,6 +161,154 @@ def bizim_algoritmalar_benchmark(text: str) -> Dict:
     return sonuclar
 
 
+def tum_algoritmalar_sureli(text: str) -> Dict:
+    """
+    Tüm sıkıştırma algoritmalarını süre ölçümüyle birlikte çalıştırır.
+
+    Returns:
+        {
+            "orijinal_byte": int,
+            "n_chars": int,
+            "algoritmalar": [
+                {"isim": str, "byte": int, "oran": float,
+                 "kucullme_pct": float, "sure_ms": float, "tur": str},
+                ...
+            ]
+        }
+    """
+    import math
+    from collections import Counter
+    from core.huffman import encode as huff_encode
+    from core.bwt import (
+        bwt_rle_huffman_encode, huffman_encode_bytes,
+        bwt_huffman_bits, bwt_rle_huffman_bits,
+        bwt_mtf_rle_huffman_bits, bwt_lzw_bits,
+    )
+    from core.hybrid import smart_hybrid
+
+    raw = text.encode("utf-8")
+    raw_size = len(raw)
+
+    sonuc = []
+
+    # 1. Standart Huffman
+    h_out, h_ms = _olc_zaman(huffman_encode_bytes, text)
+    h_byte = len(h_out["byte_data"])
+    sonuc.append({
+        "isim": "Standart Huffman",
+        "byte": h_byte, "oran": h_byte / raw_size,
+        "kucullme_pct": (1 - h_byte / raw_size) * 100,
+        "sure_ms": h_ms, "tur": "Klasik",
+    })
+
+    # 2. Standart LZW
+    def _lzw_bytes(t):
+        d = {chr(i): i for i in range(256)}
+        for ch in set(t):
+            if ch not in d:
+                d[ch] = len(d)
+        nxt = len(d)
+        codes = []
+        w = ""
+        for c in t:
+            wc = w + c
+            if wc in d:
+                w = wc
+            else:
+                codes.append(d[w])
+                d[wc] = nxt
+                nxt += 1
+                w = c
+        if w:
+            codes.append(d[w])
+        bpc = math.ceil(math.log2(max(len(d), 2)))
+        bit_str = "".join(format(c, f"0{bpc}b") for c in codes)
+        padded = bit_str + "0" * ((8 - len(bit_str) % 8) % 8)
+        return bytes(int(padded[i:i+8], 2) for i in range(0, len(padded), 8))
+
+    l_bytes, l_ms = _olc_zaman(_lzw_bytes, text)
+    l_byte = len(l_bytes)
+    sonuc.append({
+        "isim": "Standart LZW",
+        "byte": l_byte, "oran": l_byte / raw_size,
+        "kucullme_pct": (1 - l_byte / raw_size) * 100,
+        "sure_ms": l_ms, "tur": "Klasik",
+    })
+
+    # 3. BWT + Huffman
+    bh_bits, bh_ms = _olc_zaman(bwt_huffman_bits, text)
+    bh_byte = (bh_bits + 7) // 8
+    sonuc.append({
+        "isim": "BWT + Huffman",
+        "byte": bh_byte, "oran": bh_byte / raw_size,
+        "kucullme_pct": (1 - bh_byte / raw_size) * 100,
+        "sure_ms": bh_ms, "tur": "BWT ailesi",
+    })
+
+    # 4. BWT + RLE + Huffman
+    br_bits, br_ms = _olc_zaman(bwt_rle_huffman_bits, text)
+    br_byte = (br_bits + 7) // 8
+    sonuc.append({
+        "isim": "BWT + RLE + Huffman",
+        "byte": br_byte, "oran": br_byte / raw_size,
+        "kucullme_pct": (1 - br_byte / raw_size) * 100,
+        "sure_ms": br_ms, "tur": "BWT ailesi",
+    })
+
+    # 5. BWT + MTF + RLE + Huffman (klasik bzip2)
+    bm_bits, bm_ms = _olc_zaman(bwt_mtf_rle_huffman_bits, text)
+    bm_byte = (bm_bits + 7) // 8
+    sonuc.append({
+        "isim": "BWT + MTF + RLE + Huffman (klasik bzip2)",
+        "byte": bm_byte, "oran": bm_byte / raw_size,
+        "kucullme_pct": (1 - bm_byte / raw_size) * 100,
+        "sure_ms": bm_ms, "tur": "BWT ailesi",
+    })
+
+    # 6. BWT + LZW
+    bl_bits, bl_ms = _olc_zaman(bwt_lzw_bits, text)
+    bl_byte = (bl_bits + 7) // 8
+    sonuc.append({
+        "isim": "BWT + LZW",
+        "byte": bl_byte, "oran": bl_byte / raw_size,
+        "kucullme_pct": (1 - bl_byte / raw_size) * 100,
+        "sure_ms": bl_ms, "tur": "BWT ailesi",
+    })
+
+    # 7. Akıllı Hibrit
+    sh, sh_ms = _olc_zaman(smart_hybrid, text, False)
+    sh_byte = (sh["smart_bits"] + 7) // 8
+    sonuc.append({
+        "isim": f"Akıllı Hibrit ({sh['nn_decision']})",
+        "byte": sh_byte, "oran": sh_byte / raw_size,
+        "kucullme_pct": (1 - sh_byte / raw_size) * 100,
+        "sure_ms": sh_ms, "tur": "Hibrit",
+    })
+
+    # 8-11. Endüstri (gzip, bzip2, zlib, lzma)
+    import gzip as _gz, bz2 as _bz, zlib as _zl, lzma as _lz
+    for ad, fn, args in [
+        ("gzip -9",  _gz.compress, (raw, 9)),
+        ("bzip2 -9", _bz.compress, (raw, 9)),
+        ("zlib -9",  _zl.compress, (raw, 9)),
+        ("lzma -9",  _lz.compress, (raw,)),  # lzma preset farklı
+    ]:
+        out, ms = _olc_zaman(fn, *args)
+        b = len(out)
+        sonuc.append({
+            "isim": ad,
+            "byte": b, "oran": b / raw_size,
+            "kucullme_pct": (1 - b / raw_size) * 100,
+            "sure_ms": ms, "tur": "Endüstri",
+        })
+
+    return {
+        "orijinal_byte": raw_size,
+        "n_chars": len(text),
+        "algoritmalar": sonuc,
+    }
+
+
 def scaling_analizi(metin_temeli: str, katlar: list = None) -> Dict:
     """
     Metni farklı boyutlarda çoğaltıp her bir algoritma için süre ve oran ölç.

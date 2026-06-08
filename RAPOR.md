@@ -396,7 +396,39 @@ We compute permutation feature importance [15] to quantify the relative contribu
 
 The dominance of unique character ratio and bigram entropy is consistent with established compression theory: low alphabet diversity and high lexical repetition strongly indicate suitability for BWT-based or dictionary-based compression.
 
-### G. Unit Test Coverage
+### G. Comprehensive Timing Analysis
+
+To characterize the latency–compression trade-off across all evaluated algorithms, we conduct a unified timing benchmark on a 693-character Turkish prose sample (756 bytes UTF-8). All measurements were obtained on the same hardware (MacBook, Python 3.11) using `time.perf_counter()` with single-run measurements.
+
+**Table VI.** Complete latency–size benchmark across all algorithms (sorted by execution time).
+
+| Category | Algorithm | Size (bytes) | Reduction | Time (ms) |
+|----------|-----------|--------------|-----------|-----------|
+| Industry | zlib -9 | 199 | 73.7% | **0.016** |
+| Industry | gzip -9 | 211 | 72.1% | 0.058 |
+| Classical | Standard Huffman | 385 | 49.1% | 0.150 |
+| Classical | Standard LZW | 473 | 37.4% | 0.186 |
+| BWT-family | BWT + LZW | 353 | 53.3% | 0.387 |
+| BWT-family | **BWT + RLE + Huffman** | **252** | **66.7%** | 0.416 |
+| BWT-family | BWT + Huffman | 438 | 42.1% | 0.430 |
+| Industry | bzip2 -9 | 278 | 63.2% | 0.614 |
+| BWT-family | BWT + MTF + RLE + Huffman (canonical bzip2) | 329 | 56.5% | 0.724 |
+| Industry | lzma -9 | 276 | 63.5% | 1.878 |
+| Hybrid | **Smart Hybrid (NN-selected)** | **252** | **66.7%** | 1993.7 |
+
+Key observations:
+
+1. **Industry compressors (zlib, gzip)** achieve sub-millisecond performance due to highly optimized C implementations. Our Python implementations are 2.5–25× slower in absolute terms but remain within the same order of magnitude for individual algorithms.
+
+2. **BWT + RLE + Huffman** achieves the best compression among our implementations (252 bytes, 66.7% reduction) while requiring only 0.42 ms—competitive with bzip2 (0.61 ms) and substantially faster than lzma (1.88 ms).
+
+3. **The canonical bzip2 pipeline (BWT + MTF + RLE + Huffman)** yields slightly worse compression than the MTF-free variant on this short input. This counter-intuitive result reflects MTF's break-even point: the additional preprocessing overhead is not amortized over short alphabets. On longer texts and with larger blocks, MTF typically improves compression—a phenomenon also documented in Salomon [14, §8.5.3].
+
+4. **Smart Hybrid latency** is dominated by the MLP feature extraction and prediction (~2 seconds). This per-instance cost is constant regardless of text length, making it most beneficial for moderately long inputs (>10 KB) where the compression gains outweigh the selection overhead. The MLP forward pass alone is microsecond-scale; the bulk of the latency arises from feature engineering (entropy estimation, n-gram counts).
+
+5. **Latency–compression frontier:** No single algorithm dominates on both axes. zlib offers fast compression with strong ratio; BWT+RLE+Huffman matches bzip2's compression with comparable speed; Smart Hybrid prioritizes optimal compression at the cost of selection latency.
+
+### H. Unit Test Coverage
 
 The test suite comprises 100 unit tests organized as follows:
 

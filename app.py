@@ -360,6 +360,29 @@ with tab0:
         _ben_rows.sort(key=lambda r: int(r["Byte"].replace(",", "")))
         st.dataframe(_ben_rows, use_container_width=True, hide_index=True, height=320)
 
+        # ═══════ TÜM ALGORİTMALAR KAPSAMLI SÜRE TABLOSU ═══════
+        st.markdown("---")
+        st.markdown("### ⏱️ Tüm Algoritmalar — Detaylı Süre + Boyut Karşılaştırması")
+        with st.spinner("Tüm algoritmalar tek tek çalıştırılıyor..."):
+            from core.benchmark import tum_algoritmalar_sureli
+            _full = tum_algoritmalar_sureli(text)
+
+        _tum_rows = []
+        for _alg in sorted(_full["algoritmalar"], key=lambda r: r["sure_ms"]):
+            _tum_rows.append({
+                "Tür":        _alg["tur"],
+                "Algoritma":  _alg["isim"],
+                "Boyut (byte)": f"{_alg['byte']:,}",
+                "Küçülme":    f"%{_alg['kucullme_pct']:.1f}",
+                "Süre (ms)":  f"{_alg['sure_ms']:.3f}",
+            })
+        st.dataframe(_tum_rows, use_container_width=True, hide_index=True, height=420)
+        st.caption(
+            f"📊 **{len(_tum_rows)} algoritma** ölçüldü — "
+            f"orijinal: **{_full['orijinal_byte']:,} byte**, "
+            f"sıralama: **süreye göre artan** (en hızlı üstte)"
+        )
+
         # ── Kompakt tablo (2 sütun yan yana) ──
         cL, cR = st.columns(2)
         with cL:
