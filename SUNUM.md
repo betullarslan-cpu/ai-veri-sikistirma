@@ -70,7 +70,7 @@ Modern çözüm: **Makine öğrenmesi** (Kotthoff, 2014).
 - **100 birim test** ile sıfır kayıp
 
 ## ✅ 2. En İyi AI Entegrasyonu
-- 🤖 **LLM ile LZW sözlüğü üretimi** (PDF'te özellikle istenen!)
+- 🤖 **LLM ile LZW sözlüğü üretimi** 
 - 3-sınıflı sinir ağı algoritma seçici
 - Akıllı Hibrit no-regret yöneticisi
 - 42 adım AI günlüğü, 12 akademik doğrulama
