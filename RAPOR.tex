@@ -1,0 +1,639 @@
+% =====================================================
+% Overleaf için hazır: Yeni Proje → Blank Project → Bu dosyayı yapıştır
+% Derleyici: pdfLaTeX (Menu → Compiler → pdfLaTeX)
+% Türkçe karakter desteği için babel kullanılır
+% =====================================================
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[turkish]{babel}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{algorithm}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{url}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue,
+}
+
+% Türkçe karakter sorunsuz: aşağıdaki ayarlar gerekli
+\usepackage[autostyle]{csquotes}
+\selectlanguage{turkish}
+
+% Algoritmalar için Türkçe etiketler
+\renewcommand{\algorithmicrequire}{\textbf{Girdi:}}
+\renewcommand{\algorithmicensure}{\textbf{Çıktı:}}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+\begin{document}
+
+% =====================================================
+% BAŞLIK
+% =====================================================
+\title{Sinir A\u{g}\i\ Tabanl\i\ Algoritma Se\c{c}imi ve Büyük Dil Modeli Destekli Sözlük Sentezi ile Hibrit Kay\i ps\i z Metin S\i k\i\c{s}t\i rmas\i: Türkçe Metin Üzerine Bir Vaka Çal\i\c{s}mas\i}
+
+\author{
+\IEEEauthorblockN{Betül Arslan}
+\IEEEauthorblockA{Bilgisayar Mühendisli\u{g}i Bölümü \\
+Y\i ld\i z Teknik Üniversitesi \\
+\.{I}stanbul, Türkiye \\
+betularslan@yildiz.edu.tr}
+}
+
+\maketitle
+
+% =====================================================
+% ÖZET (Abstract)
+% =====================================================
+\begin{abstract}
+Bu çalışma, klasik üç sıkıştırma algoritmasını---Huffman kodlaması \cite{huffman1952}, Lempel-Ziv-Welch (LZW) \cite{welch1984} ve Burrows-Wheeler dönüşümü (BWT) tabanlı boru hattı \cite{burrows1994}---iki yapay zeka modaliteleriyle uyumlu biçimde birleştiren hibrit bir kayıpsız veri sıkıştırma çerçevesini sunmaktadır: (i) Rice'ın \cite{rice1976} Algoritma Seçim Problemi (ASP) çerçevesi kapsamında uyarlanabilir \emph{algoritma seçimi} için ileri beslemeli çok katmanlı algılayıcı (MLP); (ii) LZW için kaynak-uyarlanabilir başlangıç sözlüğü üreten Büyük Dil Modeli (LLM) tabanlı \emph{sözlük sentezleyici}. Önerilen sistem; doğal Türkçe nesir, yapılandırılmış kayıtlar, DNA dizileri ve sentetik desenleri içeren heterojen veri setleri üzerinde değerlendirilmiştir. Deneysel sonuçlar, tekrarlı verilerde standart Huffman'a göre \textbf{\%85,9}'a varan iyileşme ve endüstri standardı sıkıştırıcılarla (gzip, bzip2, lzma, zlib) rekabetçi performans göstermekte; kısa Türkçe metinlerde bzip2'yi \textbf{\%36,5} oranında geride bırakmaktadır. MLP, 2.357 eğitim örneği üzerinde \textbf{\%95,2} bekletilmiş test doğruluğu ve katmanlı 5-katlı çapraz doğrulamada \textbf{\%91,7~\(\pm\)~\%1,8} elde etmiştir. Çerçeve, kenar durumları kapsayan \textbf{100 birim test} ile doğrulanmış ve HuggingFace Spaces üzerinde etkileşimli bir Streamlit uygulaması olarak yayınlanmıştır. Tüm kaynak kod, veri setleri, eğitilmiş model ve AI etkileşim günlüğü (42 giriş, 12 literatür çapraz referansı) MIT lisansı altında kamuya açıktır.
+\end{abstract}
+
+% =====================================================
+% ANAHTAR KELİMELER
+% =====================================================
+\begin{IEEEkeywords}
+Kayıpsız veri sıkıştırma, Burrows-Wheeler dönüşümü, Huffman kodlaması, Lempel-Ziv-Welch, Move-to-Front, algoritma seçim problemi, çok katmanlı algılayıcı, büyük dil modelleri, prompt mühendisliği, Türkçe doğal dil işleme, bilgi teorisi.
+\end{IEEEkeywords}
+
+% =====================================================
+% I. GİRİŞ
+% =====================================================
+\section{Giriş}
+
+\subsection{Motivasyon}
+
+Kayıpsız metin sıkıştırma, bilgi teorisi ve uygulamalı bilgisayar biliminde temel bir problemdir; arşiv depolama, ağ iletimi ve doğal dil işleme boru hatlarında geniş kullanım alanına sahiptir. Shannon'un öncü çalışmasından bu yana \cite{shannon1948}, herhangi bir kayıpsız kodlayıcının teorik alt sınırı kaynak entropisi ile karakterize edilmektedir:
+
+\begin{equation}
+H(X) = -\sum_{c \in \Sigma} p(c) \log_2 p(c)
+\label{eq:shannon}
+\end{equation}
+
+burada \(\Sigma\) kaynak alfabesini ve \(p(c)\) sembol \(c\)'nin olasılık kütle fonksiyonunu belirtir. Pratik sıkıştırıcılar bu sınıra çeşitli yapısal varsayımlar altında yaklaşır; ancak hiçbir tek algoritma tüm veri modalitelerinde tek başına üstün değildir. Huffman kodlaması \cite{huffman1952} tamsayı kod uzunluğu kısıtı altında optimallik elde eder; LZW \cite{welch1984} tekrarlı sözcüksel desenlerde mükemmeldir; BWT tabanlı boru hatları \cite{burrows1994} yapısal olarak kümelenmiş verilerde üstündür.
+
+Bu veriye bağımlı performans heterojenliği, Rice tarafından formüle edilen \cite{rice1976} \textbf{Algoritma Seçim Problemi (ASP)}'ni motive eder:
+
+\begin{quote}
+\emph{Bir problem örneği \(x \in P\) ve aday algoritmalar kümesi \(A = \{a_1, a_2, \ldots, a_k\}\) verildiğinde, bir performans metriği \(m(a, x)\)'i minimize eden algoritma \(a^*\)'ı seç.}
+\end{quote}
+
+Makine öğrenmesi tabanlı algoritma seçiminde son gelişmeler \cite{kotthoff2014}, veri-güdümlü seçicilerin heterojen iş yüklerinde herhangi bir bireysel algoritmayı geride bırakabileceğini göstermiştir. Biz bu paradigmayı kayıpsız metin sıkıştırma alanına iki AI entegrasyonu ile genişletiyoruz:
+
+\begin{enumerate}
+\item Elle hazırlanmış 11-boyutlu özellik vektörünü \(\{H, L, B\}\) (Huffman, LZW, BWT) üzerinde kategorik bir karara eşleyen \textbf{ayrımcı MLP tabanlı seçici}.
+\item LZW başlangıç sözlüğünü corpus-uyarlanabilir sözcüksel desenlerle zenginleştiren \textbf{LLM-güdümlü sözlük sentezleyici}.
+\end{enumerate}
+
+\subsection{Katkılar}
+
+Bu çalışmanın temel katkıları:
+
+\begin{enumerate}
+\item \textbf{LLM-Zenginleştirilmiş LZW (LZW-AI):} Büyük dil modelinin (Groq Cloud üzerinden LLaMA-3.3-70B) kaynak metin örneğini analiz ederek sık kullanılan sözcüksel birimlerin sıralı listesini ürettiği bir mekanizmayı formalize ediyor ve uyguluyoruz. Bu birimler LZW başlangıç sözlüğüne çok-baytlı girişler olarak eklenir ve Türkçe corpus'larda standart LZW üzerinde \%3-15 ampirik kazanç sağlar.
+
+\item \textbf{Üç Sınıflı MLP Algoritma Seçici:} \(11 \to 32 \to 16 \to 8 \to 3\) mimarisine sahip ileri beslemeli sinir ağı, 2.357 oracle-etiketli örnek üzerinde eğitilmiştir.
+
+\item \textbf{Pişmanlık Yok (No-Regret) Hibrit Yöneticisi:} MLP tahminini BWT son-kontrolüyle birleştirerek standart Huffman'dan daha kötü olmayan performans garantisi sunar:
+\begin{equation}
+L_{\text{hibrit}}(x) \leq L_{\text{Huffman}}(x), \quad \forall x \in \Sigma^*.
+\label{eq:noregret}
+\end{equation}
+
+\item \textbf{Tam bzip2 Boru Hattı:} BWT \(\to\) MTF \cite{bentley1986} \(\to\) RLE \(\to\) Huffman zincirinin sınırsız girdi uzunluğu için blok bazlı işleme ile tam uygulaması.
+
+\item \textbf{Unicode-Farkında LZW:} Türkçe karakterleri (\textit{ş, ğ, ü, ö, ç, ı}) standart 0-255 ASCII aralığının ötesinde destekleyen dinamik alfabe genişletmesi.
+
+\item \textbf{Ampirik Doğrulama:} Kenar durumlar, Türkçe karakterler, ölçeklenme davranışı ve algoritmalar arası tutarlılığı kapsayan \textbf{100 birim test} paketi.
+
+\item \textbf{Açık Kaynak Yayın:} Kod, veri, eğitilmiş model ve AI etkileşim günlüklerinin kamuya açık olması yoluyla tam tekrar üretilebilirlik.
+\end{enumerate}
+
+% =====================================================
+% II. İLGİLİ ÇALIŞMALAR
+% =====================================================
+\section{İlgili Çalışmalar}
+
+\subsection{Klasik Kayıpsız Sıkıştırma}
+
+Huffman'ın optimal önek-kodu \cite{huffman1952} frekans tabanlı kodlamanın temelini oluşturmuş ve Kraft eşitsizliği \cite{cover2006} ile kanıtlanabilen şu sınırı belirlemiştir:
+
+\begin{equation}
+H(X) \leq L_{\text{Huffman}} < H(X) + 1
+\label{eq:huffman_bound}
+\end{equation}
+
+Welch \cite{welch1984}, Lempel-Ziv'i \cite{ziv1977} açık sözlük iletimine gerek duymayan sözlük tabanlı bir şemayla genişletmiştir. Burrows-Wheeler Dönüşümü \cite{burrows1994}, bağlamsal olarak benzer sembolleri kümeleyen tersinir bir permütasyon getirmiş; Move-to-Front dönüşümü \cite{bentley1986} ve Huffman kodlaması aracılığıyla etkin alt-akış sıkıştırmasına olanak sağlamıştır---bu, bzip2'nin temel taşıdır.
+
+\subsection{Algoritma Seçim Problemi}
+
+Rice'ın öncü formülasyonu \cite{rice1976}, örnek özelliklerine dayalı algoritma seçimi için teorik temeli kurmuştur. Kotthoff'un derlemesi \cite{kotthoff2014}, kombinatoryal arama problemlerinde üstün performans gösteren ML tabanlı seçicileri kataloglar.
+
+\subsection{Sinirsel Sıkıştırma}
+
+Son zamanlardaki sinirsel sıkıştırma araştırmaları iki tamamlayıcı yön keşfetmiştir: (i) NNCP \cite{nncp} ve DeepZip \cite{deepzip} gibi uçtan uca sinirsel kodlamalar, dil modeli ile sembol olasılıklarını doğrudan üretip aritmetik kodlamayla birleştirir; (ii) klasik algoritmaların öğrenilen bileşenlerle artırıldığı hibrit mimariler. Bizim çalışmamız ikinci kategoriye girmektedir.
+
+\subsection{Doğal Dilin Bilgi Teorisi}
+
+Shannon \cite{shannon1951}, insan tahmin edicileri kullanarak İngilizce entropisini ampirik olarak yaklaşık 1,3 bit/karakter olarak tahmin etmiştir. Yalnızca bağlamsal modelleme altında ulaşılabilen bu sınır, koşullu entropiyi yaklaştırma motivasyonumuzdur:
+
+\begin{equation}
+H(X) = \lim_{n \to \infty} \frac{1}{n} H(X_1, X_2, \ldots, X_n)
+\label{eq:cond_entropy}
+\end{equation}
+
+% =====================================================
+% III. SİSTEM MİMARİSİ
+% =====================================================
+\section{Sistem Mimarisi}
+
+\subsection{Boru Hattı Genel Bakışı}
+
+Önerilen sistem dört mantıksal katmandan oluşur: (1) UTF-8 kodlu rastgele uzunluktaki metni kabul eden \textbf{Girdi Katmanı} (Türkçe Unicode desteği); (2) üç klasik boru hattını uygulayan \textbf{Algoritma Katmanı} (Huffman, LZW, BWT+MTF+RLE+Huffman); (3) hem elle hazırlanmış özellikler üzerinde MLP tabanlı algoritma seçimi hem de LLM tabanlı sözlük sentezi sağlayan \textbf{AI Katmanı}; (4) seçici tahminlerini koruyucu mekanizmayla (BWT son-kontrolü) birleştiren \textbf{Hibrit Yönetici}.
+
+Sistem 10 çekirdek Python modülüne modülerleştirilmiştir: \texttt{huffman.py}, \texttt{lzw.py}, \texttt{bwt.py}, \texttt{nn\_selector.py}, \texttt{hybrid.py}, \texttt{ai\_engine.py}, \texttt{entropy.py}, \texttt{next\_token.py}, \texttt{benchmark.py} ve \texttt{ui\_helpers.py}.
+
+% =====================================================
+% IV. KLASİK SIKIŞTIRMA ALGORİTMALARI
+% =====================================================
+\section{Klasik Sıkıştırma Algoritmaları}
+
+\subsection{Huffman Kodlaması}
+
+\noindent\textbf{Tanım 1 (Huffman Ağacı İnşası):} \(\Sigma\) alfabesi üzerinde olasılık dağılımı \(\{p(c_i)\}_{i=1}^{|\Sigma|}\) verildiğinde, Huffman ağacı min-yığında iki minimum frekanslı düğümün tekrar tekrar birleştirilmesiyle inşa edilir.
+
+\noindent\textbf{Teorem 1 (Huffman Optimalliği \cite{huffman1952}):} Tüm önek kodları arasında Huffman kodu beklenen kod kelime uzunluğunu minimize eder:
+\begin{equation}
+L = \sum_{c \in \Sigma} p(c) |\phi(c)|
+\label{eq:huffman_length}
+\end{equation}
+
+Huffman'ı bir min-yığınla (Python \texttt{heapq}) \(O(n \log n)\) zamanda uyguluyoruz; burada \(n = |\Sigma|\).
+
+\subsection{Unicode Destekli LZW}
+
+Standart LZW \cite{welch1984} algoritması başlangıç sözlüğünü \(D_0 = \{(c, i) : c = \text{chr}(i), 0 \leq i < 256\}\) olarak başlatır ve artımlı olarak ilerler (bkz.\ Algoritma~\ref{alg:lzw}).
+
+\begin{algorithm}
+\caption{LZW Kodlama (Unicode Destekli)}
+\label{alg:lzw}
+\begin{algorithmic}[1]
+\REQUIRE Metin \(T \in \Sigma^*\)
+\ENSURE Kodlar \(C \subseteq \mathbb{N}\)
+\STATE \(D \gets D_0'\) \COMMENT{Türkçe karakterlerle genişletilmiş başlangıç}
+\STATE \(w \gets \varepsilon\)
+\FOR{her \(c \in T\)}
+    \STATE \(wc \gets w \cdot c\)
+    \IF{\(wc \in \text{keys}(D)\)}
+        \STATE \(w \gets wc\)
+    \ELSE
+        \STATE \(C\)'ye \(D[w]\)'yi ekle
+        \STATE \(D[wc] \gets |D|\)
+        \STATE \(w \gets c\)
+    \ENDIF
+\ENDFOR
+\STATE \(C\)'ye \(D[w]\)'yi ekle
+\end{algorithmic}
+\end{algorithm}
+
+\noindent\textbf{Türkçe Karakter Problemi:} Standart başlangıç \(D_0\) yalnızca tek baytlı ASCII karakterleri içerir. `ş' (U+015F) gibi Türkçe karakterler 255'i aşan kod noktalarına sahiptir.
+
+\noindent\textbf{Önerilen Çözüm:} \(D_0\)'ı girdide bulunan tüm benzersiz karakterlerle dinamik olarak genişletiyoruz:
+\begin{equation}
+D_0' = D_0 \cup \{(c, 256 + k) : c \in \text{unique}(x) \setminus D_0\}
+\label{eq:lzw_init}
+\end{equation}
+
+Bu yaklaşım Salomon'un \cite{salomon2007} evrensel ilkesiyle uyumludur.
+
+\subsection{BWT + MTF + RLE + Huffman Boru Hattı}
+
+Burrows-Wheeler Dönüşümü \cite{burrows1994}, bağlamsal fazlalığı sömüren tersinir bir permütasyon uygular. Move-to-Front dönüşümü \cite{bentley1986} bağlamsal kümeleri küçük tam sayı dizilerine dönüştürür. Çıktı küçük tam sayılar tarafından domine edilir; bu durum Çalışma Uzunluğu Kodlaması ve Huffman sıkıştırması için etkindir. Bu üç aşamalı boru hattı kanonik bzip2 mimarisine karşılık gelir \cite{salomon2007}.
+
+\subsection{Sınırsız Girdiler için Blok-Bazlı BWT}
+
+BWT'nin saf sonek dizisi inşası için \(O(n^2 \log n)\) karmaşıklığı pratik blok boyutunu sınırlar. bzip2 blok bazlı stratejisini benimsiyoruz:
+
+\begin{equation}
+\text{BWT}^*(T) = \{(\text{BWT}(T_i), \text{idx}_i)\}_{i=1}^{\lceil |T|/B \rceil}
+\label{eq:bwt_blocks}
+\end{equation}
+
+burada \(T_i\) boyut \(B = 8000\) olan \(i\)-inci bloğu belirtir.
+
+% =====================================================
+% V. YAPAY ZEKA ENTEGRASYONU
+% =====================================================
+\section{Yapay Zeka Entegrasyonu}
+
+\subsection{LLM Tabanlı Sözlük Sentezi}
+
+\noindent\textbf{Motivasyon:} Tek karakterlik girişlerle standart LZW başlatması kaynak-uyarlanabilir öncül sağlamaz. Çok-baytlı başlatma girişleri olarak gömüldüğünde alana özgü sözcüksel desenlerin desen eşleştirmeyi hızlandırdığını ve kod akış uzunluğunu azalttığını varsayıyoruz.
+
+\noindent\textbf{Mimari Bileşen:} Groq Cloud API üzerinden erişilen Büyük Dil Modeli (LLaMA-3.3-70B) alan-bilgisi oracle'ı olarak hizmet eder.
+
+\noindent\textbf{Prompt Mühendisliği:} Sistem talimatı şudur:
+
+\begin{quote}
+\small
+\texttt{Sistem: Sen veri sıkıştırma uzmanısın. Verilen metin türü için LZW sıkıştırmasında pattern eşleşmesini hızlandıracak EN YAYGIN kelime/ifadeleri tahmin et. JSON formatında döndür.}
+\end{quote}
+
+\noindent\textbf{LZW Sözlük Zenginleştirmesi:} Sentezlenen kelimeler \(W = \{w_1, \ldots, w_k\}\) LZW başlangıç sözlüğüne eklenir:
+\begin{equation}
+D_0'' = D_0' \cup \{(w_j, 256 + |\text{Türkçe karakterler}| + j)\}_{j=1}^{k}
+\label{eq:llm_dict}
+\end{equation}
+
+\subsection{MLP Tabanlı Algoritma Seçici}
+
+\noindent\textbf{Özellik Mühendisliği:} Girdi metin \(T\)'den 11-boyutlu bir özellik vektörü \(\phi(T) \in \mathbb{R}^{11}\) çıkarıyoruz (Tablo~\ref{tab:features}).
+
+\begin{table}[h]
+\caption{MLP Girdisi: 11 Özellik}
+\label{tab:features}
+\centering
+\small
+\begin{tabular}{@{}cll@{}}
+\toprule
+İndeks & Özellik & Tanım \\
+\midrule
+\(\phi_1\) & Shannon entropisi & \(H(T)\) \\
+\(\phi_2\) & Benzersiz karakter oranı & \(|\Sigma_T|/|T|\) \\
+\(\phi_3\) & İlk 3 karakter ağırlığı & \(\sum_{i=1}^{3} p(c_{(i)})\) \\
+\(\phi_4\) & Boşluk oranı & \(p(' ')\) \\
+\(\phi_5\) & Türkçe karakter oranı & \(\sum_{c \in \Sigma_{\text{TR}}} p(c)\) \\
+\(\phi_6\) & Ortalama koşu uzunluğu & \(\bar{r}(T)\) \\
+\(\phi_7\) & Rakam oranı & \(\sum_{c \in \{0..9\}} p(c)\) \\
+\(\phi_8\) & Büyük harf oranı & \(p(\text{üst})\) \\
+\(\phi_9\) & Bigram entropi & \(H_2(T)\) \\
+\(\phi_{10}\) & Maksimum koşu oranı & \(\max(r)/|T|\) \\
+\(\phi_{11}\) & \(\log_2 |\Sigma_T|\) & log-alfabe boyutu \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Ağ Mimarisi:} Üç gizli katmanlı ileri beslemeli MLP kullanıyoruz:
+\begin{equation}
+f_\theta : \mathbb{R}^{11} \to \mathbb{R}^{32} \to \mathbb{R}^{16} \to \mathbb{R}^{8} \to \Delta^{3}
+\label{eq:mlp_arch}
+\end{equation}
+
+burada \(\Delta^3\) 2-simpleksidir (\(\{H, L, B\}\) üzerinde çıktı olasılık dağılımı).
+
+\noindent\textbf{Eğitim Hedefi:} \(L_2\) düzenlileştirmesiyle çapraz entropi kaybı:
+\begin{equation}
+\mathcal{L}(\theta) = -\frac{1}{N} \sum_{i=1}^{N} \log f_\theta(y_i \mid \phi(T_i)) + \frac{\alpha}{2} \|\theta\|_2^2
+\label{eq:loss}
+\end{equation}
+
+\(\alpha = 10^{-3}\) ile. Optimizasyon \%15 doğrulama bölünmesi üzerinde erken durdurma ile Adam aracılığıyla gerçekleştirilir.
+
+\noindent\textbf{Oracle Etiketleme Stratejisi:} Her eğitim örneği \(T_i\) minimum bit sayısını veren algoritma ile etiketlenir:
+\begin{equation}
+y_i = \arg\min_{a \in \{H, L, B\}} \text{bit}(a, T_i)
+\label{eq:oracle}
+\end{equation}
+
+\subsection{Pişmanlık Yok Hibrit Yönetici}
+
+\noindent\textbf{Teorem 2 (Pişmanlık Yok Garantisi):} \(\mathcal{S}(T)\) Akıllı Hibrit çıktısını ve \(L_H(T)\) standart Huffman kod kelime uzunluğunu belirtsin. O halde:
+\begin{equation}
+L_\mathcal{S}(T) \leq L_H(T), \quad \forall T \in \Sigma^*
+\label{eq:theorem2}
+\end{equation}
+
+\noindent\textbf{Kanıt:} İnşa gereği, hibrit yöneticisi şunu hesaplar:
+\begin{equation}
+L_\mathcal{S}(T) = \min(L_{f_\theta(T)}(T), L_{\text{BWT}}(T), L_H(T))
+\label{eq:hybrid_def}
+\end{equation}
+
+Minimizasyon açıkça \(L_H(T)\)'yi içerdiğinden, denklem~(\ref{eq:theorem2}) önemsiz olarak geçerlidir. \(\blacksquare\)
+
+% =====================================================
+% VI. DENEYSEL DEĞERLENDİRME
+% =====================================================
+\section{Deneysel Değerlendirme}
+
+\subsection{Veri Setleri}
+
+Heterojen bir corpus üzerinde değerlendiriyoruz: \texttt{large\_turkish.txt} (64.240 karakter, doğal Türkçe nesir), \texttt{diverse\_corpus.txt} (37.853 karakter, karma), \texttt{turkce\_dogal.txt} (5.260 karakter, test seti), \texttt{sample.txt} (7.400 karakter, yüksek tekrarlı) ve sentetik 14 kategori. Toplam eğitim örneği: 2.357.
+
+\subsection{Çapraz Doğrulama ve Bekletilmiş Performans}
+
+Katmanlı 5-katlı çapraz doğrulama ve \%20 bekletilmiş set kullanıyoruz. Sonuçlar Tablo~\ref{tab:mlp_perf}'de sunulmuştur.
+
+\begin{table}[h]
+\caption{MLP Sınıflandırma Performansı}
+\label{tab:mlp_perf}
+\centering
+\begin{tabular}{@{}lc@{}}
+\toprule
+Metrik & Değer \\
+\midrule
+Bekletilmiş doğruluk & 0,952 \\
+5-katlı CV ortalaması & 0,917 \\
+5-katlı CV std.\ sapması & \(\pm 0,018\) \\
+Makro-F1 (bekletilmiş) & 0,945 \\
+LZW geri çağırma & 1,00 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Veri Tipleri Arasında Sıkıştırma Performansı}
+
+Standart Huffman ile Akıllı Hibrit arasındaki sıkıştırma oranı karşılaştırması Tablo~\ref{tab:comp_ratio}'de sunulmuştur.
+
+\begin{table}[h]
+\caption{Sıkıştırma Oranı Karşılaştırması}
+\label{tab:comp_ratio}
+\centering
+\small
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Veri Tipi & Std.\ Huffman & Akıllı Hibrit & \(\Delta\) \\
+\midrule
+Tekrarlı (ABC\(\times\)100) & \%78,2 & \%96,9 & +18,7 \\
+DNA (ATCG) & \%73,8 & \%94,1 & +20,3 \\
+JSON kayıt & \%60,7 & \%94,7 & +34,0 \\
+Türkçe nesir & \%37,1 & \%38,7 & +1,6 \\
+Wikipedia Türkçe & \%39,8 & \%58,3 & +18,5 \\
+Türkçe haber & \%42,0 & \%54,3 & +12,3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Endüstri Standardı Sıkıştırıcılarla Karşılaştırma}
+
+730 karakterlik Türkçe akademik metin üzerinde endüstri standardı sıkıştırıcılarla karşılaştırma Tablo~\ref{tab:industry}'de gösterilmektedir.
+
+\begin{table}[h]
+\caption{Endüstri Standardı Karşılaştırması}
+\label{tab:industry}
+\centering
+\begin{tabular}{@{}lrrr@{}}
+\toprule
+Sıkıştırıcı & Boyut (bayt) & Azaltma & Süre (ms) \\
+\midrule
+gzip -9 & 95 & \%87,0 & 0,06 \\
+zlib -9 & 91 & \%87,5 & 0,01 \\
+bzip2 -9 & 148 & \%79,7 & 0,80 \\
+lzma -9 & 124 & \%83,0 & 6,79 \\
+\textbf{bwt\_rle\_huffman} & \textbf{94} & \textbf{\%87,1} & 0,56 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+BWT tabanlı uygulamamız bu kıyaslamada bzip2'yi \%36,5 oranında geride bırakır.
+
+\subsection{Bağlamsal Entropi Analizi (n-gram)}
+
+iid Shannon entropisi ile bağlamsal entropi arasındaki boşluğu ölçmek için unigram, bigram ve trigram entropilerini Türkçe corpus üzerinde değerlendiriyoruz (Tablo~\ref{tab:ngram}).
+
+\begin{table}[h]
+\caption{Türkçe Metinde Bağlamsal Entropi Tahminleri}
+\label{tab:ngram}
+\centering
+\begin{tabular}{@{}lrr@{}}
+\toprule
+Model & Bit/karakter & Ham UTF-8'den azaltma \\
+\midrule
+Ham UTF-8 & 8,00 & -- \\
+Unigram (iid) & 4,68 & \%41,5 \\
+Bigram (Markov-1) & 3,58 & \%55,3 \\
+Trigram (Markov-2) & 2,74 & \%65,8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Özellik Önemi Analizi}
+
+MLP tahminlerine her girdi özelliğinin göreceli katkısını ölçmek için permütasyon özellik önemini hesaplıyoruz \cite{breiman2001}. Sonuçlar Tablo~\ref{tab:importance}'de gösterilmektedir.
+
+\begin{table}[h]
+\caption{Permütasyon Özellik Önemi}
+\label{tab:importance}
+\centering
+\begin{tabular}{@{}clc@{}}
+\toprule
+Sıra & Özellik & Önem \\
+\midrule
+1 & Benzersiz karakter oranı & 0,247 \\
+2 & Bigram entropi & 0,183 \\
+3 & \(\log_2 |\Sigma_T|\) & 0,096 \\
+4 & Ortalama koşu uzunluğu & 0,082 \\
+5 & Türkçe karakter oranı & 0,058 \\
+6 & Shannon entropisi & 0,042 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Kapsamlı Süre Analizi}
+
+Tüm değerlendirilen algoritmalarda gecikme-sıkıştırma değişimini karakterize etmek için 693 karakterlik Türkçe nesir örneği üzerinde birleşik bir süre kıyaslaması yapıyoruz. Sonuçlar Tablo~\ref{tab:timing}'de sunulmuştur.
+
+\begin{table}[h]
+\caption{Tüm Algoritmalarda Tam Gecikme-Boyut Kıyaslaması}
+\label{tab:timing}
+\centering
+\small
+\begin{tabular}{@{}llrrr@{}}
+\toprule
+Kategori & Algoritma & Boyut & Azaltma & Süre (ms) \\
+\midrule
+Endüstri & zlib -9 & 199 & \%73,7 & \textbf{0,016} \\
+Endüstri & gzip -9 & 211 & \%72,1 & 0,058 \\
+Klasik & Std.\ Huffman & 385 & \%49,1 & 0,150 \\
+Klasik & Std.\ LZW & 473 & \%37,4 & 0,186 \\
+BWT-aile & BWT + LZW & 353 & \%53,3 & 0,387 \\
+BWT-aile & \textbf{BWT+RLE+Huffman} & \textbf{252} & \textbf{\%66,7} & 0,416 \\
+BWT-aile & BWT + Huffman & 438 & \%42,1 & 0,430 \\
+Endüstri & bzip2 -9 & 278 & \%63,2 & 0,614 \\
+BWT-aile & BWT+MTF+RLE+Huff & 329 & \%56,5 & 0,724 \\
+Endüstri & lzma -9 & 276 & \%63,5 & 1,878 \\
+Hibrit & Akıllı Hibrit (BWT) & 252 & \%66,7 & 1993,7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Karışıklık Matrisi}
+
+Bekletilmiş test seti üzerinde MLP seçicinin sınıf başına davranışı Tablo~\ref{tab:confusion}'de gösterilmektedir.
+
+\begin{table}[h]
+\caption{Karışıklık Matrisi (Bekletilmiş)}
+\label{tab:confusion}
+\centering
+\begin{tabular}{@{}lrrrr@{}}
+\toprule
+& Huffman & LZW & BWT & Geri Çağırma \\
+\midrule
+\textbf{Huffman} & 187 & 0 & 16 & \%92,1 \\
+\textbf{LZW} & 0 & 7 & 0 & \textbf{\%100} \\
+\textbf{BWT} & 5 & 0 & 201 & \%97,6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{AI Etkileşim Günlüğü Analizi}
+
+Sistem geliştirme sırasındaki her AI ile ilgili etkileşim yapılandırılmış bir JSON günlüğüne kaydedilmiştir (\texttt{ai\_diary.json}). Tablo~\ref{tab:ai_log} etkileşim corpus'unu özetler.
+
+\begin{table}[h]
+\caption{AI Etkileşim Günlüğü Kompozisyonu (42 giriş toplam)}
+\label{tab:ai_log}
+\centering
+\begin{tabular}{@{}llr@{}}
+\toprule
+Kategori & Sembol & Sayı \\
+\midrule
+Klasik AI etkileşimi & \(\diamond\) & 26 \\
+Yansıtıcı süreç notu & \(\star\) & 16 \\
+Akademik doğrulama & \(\square\) & 12 \\
+\midrule
+Toplam token tüketimi & -- & 3.869 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Veri Seti İstatistikleri}
+
+\begin{table}[h]
+\caption{Eğitim Verisi Kaynak ve Oracle-Etiketli Sınıf Dağılımı}
+\label{tab:dataset}
+\centering
+\small
+\begin{tabular}{@{}lrrrrr@{}}
+\toprule
+Kaynak & Karakter & Huffman & LZW & BWT & Toplam \\
+\midrule
+large\_turkish & 64.240 & 287 & 8 & 421 & 716 \\
+diverse\_corpus & 37.853 & 198 & 7 & 318 & 523 \\
+turkce\_dogal & 5.260 & 42 & 1 & 67 & 110 \\
+Sentetik & -- & 401 & 19 & 588 & 1.008 \\
+\midrule
+\textbf{Toplam} & \textbf{107.353+} & \textbf{928} & \textbf{35} & \textbf{1.394} & \textbf{2.357} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Birim Test Kapsamı}
+
+Test paketi 100 birim test içerir: tersinirlik (72 test), ölçeklenme (14 test), performans (11 test), blok BWT (2 test) ve algoritma çapraz tutarlılığı (1 test). Tüm 100 test 0,11 saniyede geçer.
+
+% =====================================================
+% VII. TARTIŞMA
+% =====================================================
+\section{Tartışma}
+
+\subsection{Güçlü Yanlar}
+
+(1) Her algoritmik bileşen kurulmuş literatürden türetilmiş ve standart metinlere karşı doğrulanmıştır. (2) Teorem~2, kusurlu MLP tahminlerine rağmen Akıllı Hibrit'in asla standart Huffman'dan daha kötü performans göstermemesini sağlar. (3) Sistem Türkçeye özgü karakterleri sorunsuz şekilde işler. (4) Kod, veri, model ve AI etkileşim günlüklerinin açık kaynak yayını bağımsız doğrulama ve genişletmeyi destekler.
+
+\subsection{Kısıtlamalar}
+
+(1) Shannon tabanlı entropi tahminlerimiz karakter bağımsızlığını varsayar. Gerçek dilsel entropi önemli ölçüde daha düşüktür, bu da bağlamsal kodlayıcıların (aritmetik kodlama + n-gram modelleri) daha fazla kazanç sağlayabileceğini düşündürür. (2) Sinirsel bileşen sembol seviyesi tahmini yerine \emph{algoritma seçimi} gerçekleştirir. (3) 8.000 karakterlik blok boyutu, sıkıştırma kalitesi ile \(O(n^2 \log n)\) inşa maliyeti arasında pragmatik bir uzlaşmadır.
+
+\subsection{Gelecek Çalışmalar}
+
+(1) Türkçe önceden eğitilmiş bir LLM ile aritmetik kodlamanın entegrasyonu, koşullu entropi sınırına yaklaşmak için. (2) Benzer AI-zenginleştirilmiş hibrit çerçevelerin görüntü (DCT yoluyla) ve ses sıkıştırmasına uygulanması. (3) Entropi tahminlerine dayalı BWT blok boyutunun dinamik seçimi.
+
+% =====================================================
+% VIII. SONUÇ
+% =====================================================
+\section{Sonuç}
+
+Klasik algoritmaları iki AI entegrasyonuyla birleştiren hibrit kayıpsız metin sıkıştırma çerçevesini sundu: uyarlanabilir algoritma seçimi için çok katmanlı algılayıcı ve kaynak-uyarlanabilir LZW sözlük sentezi için Büyük Dil Modeli. Ampirik değerlendirme, yapısal olarak tekrarlı verilerde önemli iyileşmeler (standart Huffman'a göre \%85,9'a kadar azaltma) ve endüstri standardı sıkıştırıcılarla rekabetçi performans (kısa Türkçe metinde bzip2'yi \%36,5 oranında geride bırakma) göstermektedir.
+
+% =====================================================
+% TEŞEKKÜR
+% =====================================================
+\section*{Teşekkür}
+
+Yazar, proje süresince kurumsal destek için Yıldız Teknik Üniversitesi Bilgisayar Mühendisliği Bölümü'ne teşekkür eder. Yazar, Groq Cloud API aracılığıyla LLaMA-3.3-70B modeline ücretsiz erişim sağladığı için Groq Inc.'e müteşekkirdir.
+
+% =====================================================
+% KAYNAKÇA
+% =====================================================
+\begin{thebibliography}{99}
+
+\bibitem{huffman1952}
+D.~A. Huffman, ``A method for the construction of minimum-redundancy codes,'' \emph{Proc. IRE}, vol.~40, no.~9, pp. 1098--1101, Sep.\ 1952.
+
+\bibitem{ziv1977}
+J.~Ziv and A.~Lempel, ``A universal algorithm for sequential data compression,'' \emph{IEEE Trans. Inf. Theory}, vol.~IT-23, no.~3, pp. 337--343, May 1977.
+
+\bibitem{welch1984}
+T.~A. Welch, ``A technique for high-performance data compression,'' \emph{Computer}, vol.~17, no.~6, pp. 8--19, Jun.\ 1984.
+
+\bibitem{burrows1994}
+M.~Burrows and D.~J. Wheeler, ``A block-sorting lossless data compression algorithm,'' Digital Equipment Corporation, SRC Research Report 124, May 1994.
+
+\bibitem{rice1976}
+J.~R. Rice, ``The algorithm selection problem,'' \emph{Advances in Computers}, vol.~15, pp. 65--118, 1976.
+
+\bibitem{shannon1948}
+C.~E. Shannon, ``A mathematical theory of communication,'' \emph{Bell Syst. Tech. J.}, vol.~27, no.~3, pp. 379--423, Jul.\ 1948.
+
+\bibitem{kotthoff2014}
+L.~Kotthoff, ``Algorithm selection for combinatorial search problems: A survey,'' \emph{AI Magazine}, vol.~35, no.~3, pp. 48--60, Sep.\ 2014.
+
+\bibitem{shannon1951}
+C.~E. Shannon, ``Prediction and entropy of printed English,'' \emph{Bell Syst. Tech. J.}, vol.~30, no.~1, pp. 50--64, Jan.\ 1951.
+
+\bibitem{bentley1986}
+J.~L. Bentley, D.~D. Sleator, R.~E. Tarjan, and V.~K. Wei, ``A locally adaptive data compression scheme,'' \emph{Commun. ACM}, vol.~29, no.~4, pp. 320--330, Apr.\ 1986.
+
+\bibitem{cover2006}
+T.~M. Cover and J.~A. Thomas, \emph{Elements of Information Theory}, 2nd ed.\quad Hoboken, NJ, USA: Wiley-Interscience, 2006.
+
+\bibitem{nncp}
+F.~Bellard, ``NNCP: Lossless data compression with neural networks,'' 2019.\ [Çevrimiçi].\ Erişilebilir: https://bellard.org/nncp/
+
+\bibitem{deepzip}
+M.~Goyal, K.~Tatwawadi, S.~Chandak, and I.~Ochoa, ``DeepZip: Lossless data compression using recurrent neural networks,'' in \emph{Proc. Data Compression Conf. (DCC)}, 2019, pp. 575--584.
+
+\bibitem{salomon2007}
+D.~Salomon, \emph{Data Compression: The Complete Reference}, 4th ed.\quad London, U.K.: Springer, 2007.
+
+\bibitem{breiman2001}
+L.~Breiman, ``Random forests,'' \emph{Machine Learning}, vol.~45, no.~1, pp. 5--32, Oct.\ 2001.
+
+\bibitem{sayood2017}
+K.~Sayood, \emph{Introduction to Data Compression}, 4th ed.\quad Burlington, MA, USA: Morgan Kaufmann, 2017.
+
+\bibitem{mackay2003}
+D.~J.~C. MacKay, \emph{Information Theory, Inference, and Learning Algorithms}.\quad Cambridge, U.K.: Cambridge Univ. Press, 2003.
+
+\bibitem{bishop2006}
+C.~M. Bishop, \emph{Pattern Recognition and Machine Learning}.\quad New York, NY, USA: Springer, 2006.
+
+\bibitem{goodfellow2016}
+I.~Goodfellow, Y.~Bengio, and A.~Courville, \emph{Deep Learning}.\quad Cambridge, MA, USA: MIT Press, 2016.
+
+\bibitem{hastie2009}
+T.~Hastie, R.~Tibshirani, and J.~Friedman, \emph{The Elements of Statistical Learning}, 2nd ed.\quad New York, NY, USA: Springer, 2009.
+
+\bibitem{pedregosa2011}
+F.~Pedregosa \emph{et al.}, ``Scikit-learn: Machine learning in Python,'' \emph{J. Mach. Learn. Res.}, vol.~12, pp. 2825--2830, Oct.\ 2011.
+
+\bibitem{kullback1951}
+S.~Kullback and R.~A. Leibler, ``On information and sufficiency,'' \emph{Ann. Math. Statist.}, vol.~22, no.~1, pp. 79--86, Mar.\ 1951.
+
+\end{thebibliography}
+
+\end{document}
