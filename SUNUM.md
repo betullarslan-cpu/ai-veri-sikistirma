@@ -62,7 +62,7 @@ Modern çözüm: **Makine öğrenmesi** (Kotthoff, 2014).
 
 ---
 
-# 🎯 Hocanın PDF'inde 2 Kriter
+# 🎯 İstenen 2 Kriter
 
 ## ✅ 1. En İyi Performans
 - 6 farklı veri tipinde **+%2.5 ile +%86.5** iyileşme
